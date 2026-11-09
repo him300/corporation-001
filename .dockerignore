@@ -1,0 +1,9 @@
+.git
+node_modules
+*.log
+*.png
+*.pdf
+MANUAL.md
+MANUAL.html
+Dockerfile
+.dockerignore

@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Corporation 001 — the code</title>
+<style>
+  :root{
+    --bg:#0a0b0d; --panel:#0f1114; --panel-2:#0b0d10;
+    --ink:#e9e7e2; --dim:#858c93; --faint:#6a727a;
+    --line:#1d2126; --wire:#2f353c;
+    --amber:#d9a441; --blue:#6f9cc9; --green:#4fb286; --red:#d4635a;
+    --ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#faf8f4; --panel:#ffffff; --panel-2:#f4f0e8;
+      --ink:#16150f; --dim:#6a655a; --faint:#7f7970;
+      --line:#e4dfd3; --wire:#cfc8b8;
+      --amber:#a9761f; --blue:#4a6f96; --green:#3d7d5c; --red:#b4433c;
+    }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;padding:56px 24px 120px;background:var(--bg);color:var(--ink);
+    font:15px/1.55 var(--ui);-webkit-font-smoothing:antialiased;
+  }
+  main{max-width:960px;margin:0 auto}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  .overline{font:500 10px/1 var(--mono);letter-spacing:.24em;text-transform:uppercase;color:var(--faint)}
+  h1{font:600 34px/1.15 var(--ui);letter-spacing:-.025em;margin:16px 0 0}
+  .standfirst{font-size:16px;line-height:1.62;color:var(--dim);max-width:66ch;margin:16px 0 0}
+  .standfirst b{color:var(--ink);font-weight:500}
+  .meta{font:400 10px/1.7 var(--mono);letter-spacing:.06em;color:var(--faint);margin-top:22px}
+  .meta span{color:var(--dim)}
+
+  h2{display:flex;align-items:baseline;gap:14px;margin:66px 0 0;padding-top:20px;
+     border-top:1px solid var(--line);font:600 14px/1.3 var(--ui)}
+  h2 .n{font:500 10.5px/1 var(--mono);letter-spacing:.18em;color:var(--faint)}
+  .sub{font-size:13px;line-height:1.65;color:var(--dim);margin:10px 0 0;max-width:74ch}
+  .sub code,p code,li code,td code{font:400 11.5px var(--mono);color:var(--ink);
+    background:var(--panel);border:1px solid var(--line);border-radius:2px;padding:1px 4px}
+
+  /* ---------- figure ---------- */
+  .fig{margin:22px 0 0;padding:18px;background:var(--panel-2);border:1px solid var(--line);
+       border-radius:3px;overflow-x:auto}
+  .fig svg{display:block;width:100%;min-width:780px;height:auto}
+  .box{fill:var(--panel);stroke:var(--line)}
+  .wire{stroke:var(--wire);stroke-width:1;fill:none}
+  .dash{stroke:var(--wire);stroke-width:1;fill:none;stroke-dasharray:3 4}
+  svg text{font-family:var(--mono)}
+  .f-name{font-size:11.5px;fill:var(--ink);font-weight:500}
+  .f-name-sm{font-size:9.6px;letter-spacing:.01em}
+  .f-num{font-size:8.5px;fill:var(--faint)}
+  .f-role{font-size:9px;fill:var(--dim)}
+  .f-tag{font-size:8px;letter-spacing:.19em;fill:var(--faint)}
+  .f-wire{font-size:8.5px;fill:var(--faint)}
+  .f-ext{font-size:8.5px;fill:var(--amber)}
+
+  /* ---------- trace ---------- */
+  ol.trace{list-style:none;counter-reset:t;margin:26px 0 0;padding:0}
+  ol.trace>li{position:relative;padding:16px 0 16px 40px;border-top:1px solid var(--line)}
+  ol.trace>li::before{
+    counter-increment:t;content:counter(t);position:absolute;left:0;top:19px;
+    font:500 9.5px/1 var(--mono);color:var(--faint);
+  }
+  .tline{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px}
+  .tline .ref{font:400 10px/1 var(--mono);letter-spacing:.04em;color:var(--blue)}
+  .tline .fn{font:500 12px/1.3 var(--mono);color:var(--ink)}
+  ol.trace pre{margin:10px 0 0;padding:10px 12px;background:var(--panel);border:1px solid var(--line);
+    border-radius:2px;font:400 11px/1.65 var(--mono);color:var(--ink);white-space:pre-wrap;
+    overflow-wrap:anywhere;overflow:visible}
+  ol.trace p{margin:9px 0 0;font-size:12.5px;line-height:1.6;color:var(--dim);max-width:82ch}
+
+  /* ---------- code tree ---------- */
+  .tree{margin:24px 0 0;padding:18px 20px;background:var(--panel-2);border:1px solid var(--line);
+        border-radius:3px;overflow-x:auto}
+  .tree pre{margin:0;font:400 11.5px/1.85 var(--mono);white-space:pre;min-width:640px}
+  .tree .k{color:var(--ink)}
+  .tree .t{color:var(--blue)}
+  .tree .c{color:var(--faint)}
+
+  /* ---------- flow ---------- */
+  .flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;margin:24px 0 0}
+  .step{flex:1 1 150px;border:1px solid var(--line);border-radius:3px;background:var(--panel);
+        padding:12px 13px;min-width:0}
+  .step .sn{font:500 8px/1 var(--mono);letter-spacing:.16em;color:var(--faint);text-transform:uppercase}
+  .step .sv{font:500 11.5px/1.4 var(--mono);color:var(--ink);margin-top:7px;overflow-wrap:anywhere}
+  .step .sd{font-size:11px;line-height:1.5;color:var(--dim);margin-top:6px}
+  .arrow{align-self:center;font:400 12px var(--mono);color:var(--faint);padding:0 1px}
+
+  /* ---------- cards ---------- */
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:26px 0 0}
+  .card{border:1px solid var(--line);border-radius:3px;background:var(--panel);padding:16px 18px 18px}
+  .ch{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  .ch .cn{font:500 12px/1.3 var(--mono);color:var(--ink)}
+  .ch .cl{font:400 9px/1 var(--mono);color:var(--faint)}
+  .ce{font:400 10px/1.7 var(--mono);color:var(--blue);margin-top:9px;overflow-wrap:anywhere}
+  .cj{font-size:12.5px;line-height:1.6;color:var(--dim);margin:9px 0 0}
+  .cq{margin:12px 0 0;padding-left:10px;border-left:2px solid var(--amber);
+      font-size:11.5px;line-height:1.6;color:var(--faint);font-style:italic}
+  .card.wide{grid-column:1 / -1}
+
+  /* ---------- table ---------- */
+  table{width:100%;border-collapse:collapse;margin:24px 0 0;font-size:12.5px}
+  th,td{text-align:left;padding:10px 16px 10px 0;vertical-align:top;border-top:1px solid var(--line)}
+  th{font:500 8.5px/1.4 var(--mono);letter-spacing:.15em;text-transform:uppercase;
+     color:var(--faint);padding-top:0;border-top:0}
+  td:first-child{color:var(--ink)}
+  td:last-child{color:var(--dim);white-space:nowrap;font:400 11px var(--mono)}
+
+  footer{margin:80px 0 0;padding-top:20px;border-top:1px solid var(--line);
+    font:400 10px/1.85 var(--mono);letter-spacing:.05em;color:var(--faint)}
+  footer b{color:var(--dim);font-weight:400}
+
+  @media (max-width:760px){
+    body{padding:36px 16px 90px}
+    h1{font-size:27px}
+    .cards{grid-template-columns:1fr}
+    .arrow{display:none}
+  }
+</style>
+</head>
+<body>
+<main>
+
+  <div class="overline">Corporation 001 · the code</div>
+  <h1>How the code fits together</h1>
+  <p class="standfirst">
+    Nine files and about <b>3,500 lines</b>, <b>no dependencies</b> — Node's <code>http</code> and
+    <code>fetch</code> are the whole stack. Two engines share one TypeSafe client; the browser is a
+    dumb renderer of a payload the server already computed. Three more files are surfaces and tools,
+    not machinery.
+  </p>
+  <p class="meta">node <span>server.mjs · market.mjs · replay.mjs · ohlcv.mjs · jev.mjs</span> &nbsp;·&nbsp; browser <span>index.html · replay.js</span> &nbsp;·&nbsp; optional <span>julia</span></p>
+
+  <!-- ======================================================= 01 -->
+  <section id="map">
+    <h2><span class="n">01</span> The map</h2>
+    <p class="sub">
+      Dependencies point one way and never loop: the browser talks HTTP, the server imports the
+      engines, the engines import the client. Nothing in the engine layer knows a socket exists.
+    </p>
+
+    <div class="fig">
+      <svg viewBox="0 0 880 540" role="img" aria-label="Module graph: browser files, the node server, the two engines, ohlcv, the Julia bridge and the TypeSafe client.">
+        <defs>
+          <marker id="a" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--wire)"/>
+          </marker>
+        </defs>
+
+        <!-- legend -->
+        <line class="wire" x1="606" y1="27" x2="632" y2="27" marker-end="url(#a)"/>
+        <text class="f-wire" x="638" y="30">import</text>
+        <line class="dash" x1="690" y1="27" x2="716" y2="27" marker-end="url(#a)"/>
+        <text class="f-wire" x="722" y="30">HTTP + SSE</text>
+
+        <!-- row tags -->
+        <text class="f-tag" x="60" y="42">BROWSER</text>
+        <text class="f-tag" x="60" y="162">NODE PROCESS · :4362</text>
+        <text class="f-tag" x="60" y="282">ENGINES + SOURCES</text>
+        <text class="f-tag" x="60" y="398">SHARED LEAF</text>
+
+        <!-- row A -->
+        <rect class="box" x="60" y="52" width="470" height="88" rx="2"/>
+        <text class="f-name" x="76" y="76">index.html</text>
+        <text class="f-num" x="514" y="76" text-anchor="end">1 036</text>
+        <text class="f-role" x="76" y="96">markup · all theme tokens · canvas chart · the SSE client</text>
+        <text class="f-role" x="76" y="112">renderers for market, collective, ladder, tape, bill</text>
+        <text class="f-role" x="76" y="128">one state object S, replaced wholesale on every round</text>
+
+        <rect class="box" x="550" y="52" width="270" height="88" rx="2"/>
+        <text class="f-name" x="566" y="76">replay.js</text>
+        <text class="f-num" x="804" y="76" text-anchor="end">755</text>
+        <text class="f-role" x="566" y="96">replay view: CSV drop,</text>
+        <text class="f-role" x="566" y="112">path drawing, surrogate table</text>
+        <text class="f-num" x="566" y="130">loaded by index.html</text>
+
+        <!-- row B -->
+        <rect class="box" x="60" y="172" width="760" height="88" rx="2"/>
+        <text class="f-name" x="76" y="196">server.mjs</text>
+        <text class="f-num" x="804" y="196" text-anchor="end">431</text>
+        <text class="f-role" x="76" y="216">http.createServer · the one loop (step / loop / start / pause) · SSE broadcast</text>
+        <text class="f-role" x="76" y="232">snapshot() trims state to the wire · replay jobs in a Map · 9 API routes</text>
+        <text class="f-role" x="76" y="248">also serves every static file in the folder — including these pages</text>
+
+        <!-- row C -->
+        <rect class="box" x="60" y="292" width="190" height="84" rx="2"/>
+        <text class="f-name" x="72" y="314">market.mjs</text>
+        <text class="f-num" x="238" y="314" text-anchor="end">447</text>
+        <text class="f-role" x="72" y="332">the live round:</text>
+        <text class="f-role" x="72" y="347">book, briefs, fills,</text>
+        <text class="f-role" x="72" y="362">impact, mark</text>
+
+        <rect class="box" x="270" y="292" width="190" height="84" rx="2"/>
+        <text class="f-name" x="282" y="314">replay.mjs</text>
+        <text class="f-num" x="448" y="314" text-anchor="end">349</text>
+        <text class="f-role" x="282" y="332">one bar at a time,</text>
+        <text class="f-role" x="282" y="347">no look-ahead,</text>
+        <text class="f-role" x="282" y="362">then compare()</text>
+
+        <rect class="box" x="480" y="292" width="160" height="84" rx="2"/>
+        <text class="f-name" x="492" y="314">ohlcv.mjs</text>
+        <text class="f-num" x="628" y="314" text-anchor="end">342</text>
+        <text class="f-role" x="492" y="332">csv · stats ·</text>
+        <text class="f-role" x="492" y="347">fallback</text>
+        <text class="f-role" x="492" y="362">surrogates</text>
+
+        <rect class="box" x="660" y="292" width="160" height="84" rx="2"/>
+        <text class="f-name f-name-sm" x="672" y="314">julia-surrogates.mjs</text>
+        <text class="f-num" x="808" y="314" text-anchor="end">59</text>
+        <text class="f-role" x="672" y="330">one process, JSON</text>
+        <text class="f-role" x="672" y="347">in and out —</text>
+        <text class="f-role" x="672" y="362">never per bar</text>
+
+        <!-- row D -->
+        <rect class="box" x="60" y="408" width="520" height="88" rx="2"/>
+        <text class="f-name" x="76" y="432">jev.mjs</text>
+        <text class="f-num" x="564" y="432" text-anchor="end">92</text>
+        <text class="f-role" x="76" y="452">key resolution: env → file → .env, read once, never logged</text>
+        <text class="f-role" x="76" y="468">systemOne(state, questions) — one POST, 25 s abort timer, returns usage</text>
+        <text class="f-ext"  x="76" y="486">→ https://api.typesafe.ai/v1/systemone</text>
+
+        <rect class="box" x="600" y="408" width="220" height="88" rx="2"/>
+        <text class="f-name" x="616" y="432">personas.mjs</text>
+        <text class="f-num" x="804" y="432" text-anchor="end">13</text>
+        <text class="f-role" x="616" y="452">the roster: id, name,</text>
+        <text class="f-role" x="616" y="467">role, blurb ×5</text>
+        <text class="f-num"  x="616" y="485">imported by both engines</text>
+
+        <!-- wires -->
+        <path class="dash" d="M295 140 V166" marker-end="url(#a)"/>
+        <text class="f-wire" x="303" y="158">/api/stream · /api/control</text>
+
+        <path class="dash" d="M685 140 V166" marker-end="url(#a)"/>
+        <text class="f-wire" x="693" y="158">/api/replay/*</text>
+
+        <path class="wire" d="M155 260 V286" marker-end="url(#a)"/>
+        <path class="wire" d="M365 260 V286" marker-end="url(#a)"/>
+        <path class="wire" d="M560 260 V286" marker-end="url(#a)"/>
+        <path class="wire" d="M740 260 V286" marker-end="url(#a)"/>
+
+        <path class="wire" d="M155 376 V402" marker-end="url(#a)"/>
+        <text class="f-wire" x="163" y="395">systemOne ×5</text>
+        <path class="wire" d="M365 376 V402" marker-end="url(#a)"/>
+        <text class="f-wire" x="373" y="395">systemOne ×5</text>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ======================================================= 02 -->
+  <section id="round">
+    <h2><span class="n">02</span> One round, in call order</h2>
+    <p class="sub">
+      Follow the arrows down the middle: ten functions, one async fan-out, and the state mutated in
+      place the whole way. Line numbers are real; snippets are cut to the lines that decide.
+    </p>
+
+    <ol class="trace">
+      <li>
+        <div class="tline"><span class="ref">server.mjs:113</span><span class="fn">loop()</span></div>
+        <pre>timer = setTimeout(loop, delay())</pre>
+        <p>Re-arms itself only while <code>running</code>. <code>delay()</code> is 350 ms normally, 1400 slow, 0 turbo — which is the entire speed control.</p>
+      </li>
+
+      <li>
+        <div class="tline"><span class="ref">server.mjs:99</span><span class="fn">step()</span></div>
+        <pre>if (busy) return;
+busy = true;
+await runRound(market);
+broadcast('round', snapshot());</pre>
+        <p><code>busy</code> is the re-entry guard: a slow round can never overlap the next one, so the book has exactly one writer.</p>
+      </li>
+
+      <li>
+        <div class="tline"><span class="ref">market.mjs:274</span><span class="fn">runRound(m)</span> — news</div>
+        <pre>const stalled = m.quiet &gt;= 2;
+if (stalled || Math.random() &lt; 0.16) {
+  const shock = (Math.random() - 0.5) * 0.012;
+  m.fair = r2(m.fair * (1 + shock));
+}</pre>
+        <p>Market with no catalyst is a market where every Jev correctly holds, so news is forced after two quiet rounds.</p>
+      </li>
+
+      <li>
+        <div class="tline"><span class="ref">market.mjs:304</span><span class="fn">runRound</span> → <span class="fn">brief()</span> at 140</div>
+        <pre>const replies = await Promise.all(
+  m.agents.map(async (a) =&gt; {
+    const { state, question } = brief(a, m, a);
+    const res = await systemOne({ state, questions: { d: question } });</pre>
+        <p>Five calls in flight at once. <code>brief()</code> is the only place that decides what an agent is allowed to know — the state object <em>is</em> the interpretation.</p>
+      </li>
+
+      <li>
+        <div class="tline"><span class="ref">jev.mjs:63</span><span class="fn">systemOne()</span></div>
+        <pre>body: JSON.stringify({ model: MODEL, state, questions })
+// answers.d.probabilities · answers.d.confidence · usage</pre>
+        <p>Plain <code>fetch</code>, 25 s <code>AbortController</code>, key resolved once. A failure throws and the caller keeps its own <code>error</code> field — there is no retry anywhere.</p>
+      </li>
+
+      <li>
+        <div class="tline"><span class="ref">market.mjs:336</span><span class="fn">runRound</span> — the maker branch</div>
+        <pre>const mult =
+  (p.tighten || 0) * 0.68 + (p.hold || 0) * 1.0 + (p.widen || 0) * 1.75;
+const safeMult = Math.min(2.2, Math.max(0.6, mult || 1));
+const skew = -((a.position - 4000) / 4000) * 0.035;
+a._quote = { mult: safeMult, skew };
+continue;                        // she never trades, only quotes</pre>
+        <p>The maker's distribution becomes a width multiplier, not an order. <code>_quote</code> is read later by <code>rebuild()</code>.</p>
+      </li>
+
+      <li>
+        <div class="tline"><span class="ref">market.mjs:357</span><span class="fn">runRound</span> — sizing</div>
+        <pre>const intent = pBuy - pSell;
+const action = intent &gt; HOLD_BAND ? 'buy' : intent &lt; -HOLD_BAND ? 'sell' : 'hold';
+size = Math.round(Math.min(1, Math.abs(intent) * 1.25) * a.maxSize);
+size = Math.max(10, Math.round(size / 10) * 10);</pre>
+        <p>Three lines, no model: the dead zone, the scale, the rounding. Everything the README promises about "code, not the model" lives here.</p>
+      </li>
+
+      <li>
+        <div class="tline"><span class="ref">market.mjs:377</span><span class="fn">runRound</span> — the fill</div>
+        <pre>const slip = 1 + IMPACT * size * 0.55;
+const px = r2(action === 'buy' ? m.ask * slip : m.bid / slip);
+a.position += ..., a.cash -= size * px;          // trader
+mm.position -= ..., mm.cash += size * px;        // Aurelia, mirrored</pre>
+        <p>One counterparty, so the maker's position is by construction the exact negative of everyone else's. There is no queue, no partial fill, no crossing.</p>
+      </li>
+
+      <li>
+        <div class="tline"><span class="ref">market.mjs:406</span><span class="fn">runRound</span> — reprice</div>
+        <pre>m.mid = r2(m.mid * (1 + netFlow * IMPACT));
+m.mid = r2(m.mid + (m.fair - m.mid) * REVERT);
+rebuild(m, mm?._quote?.mult ?? 1, mm?._quote?.skew ?? 0);</pre>
+        <p><code>rebuild()</code> at 97 always quotes off the <em>fixed</em> base width — feeding the current bid/ask back in compounds the multiplier into a runaway spread.</p>
+      </li>
+
+      <li>
+        <div class="tline"><span class="ref">market.mjs:412</span><span class="fn">runRound</span> — mark, bill, housekeeping</div>
+        <pre>a.pnl = Number((a.cash + a.position * m.mid).toFixed(2));
+m.bill.round = { calls, tokens, cost };
+m.history.push({ round, mid, bid, ask, fair });
+m.quiet = volume === 0 ? m.quiet + 1 : 0;</pre>
+        <p>The bill comes from each response's <code>usage</code> block, never an estimate. <code>history</code> keeps the whole session; 180 rounds of it ship.</p>
+      </li>
+
+      <li>
+        <div class="tline"><span class="ref">server.mjs:70</span><span class="fn">snapshot()</span> → <span class="fn">broadcast('round')</span></div>
+        <pre>tape: market.tape.slice(-14), news: market.news.slice(-4),
+history: market.history.slice(-180), agents: market.agents.map(…)</pre>
+        <p>Trimmed deliberately: this payload is serialised and pushed down every open SSE connection on every round. The UI does no computation of its own.</p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- ======================================================= 03 -->
+  <section id="state">
+    <h2><span class="n">03</span> The one mutable object</h2>
+    <p class="sub">
+      There is no store, no event bus, no persistence. <code>freshMarket()</code> returns this literal and
+      every function takes it as its first argument and mutates it in place.
+    </p>
+
+    <div class="tree"><pre><span class="c">// market.mjs:49 — the entire state of the simulation</span>
+m = {
+  round: 12, mid: 99.83, fair: 100.04, quiet: 0,
+  bid: 99.79, ask: 99.87, spreadBps: 8.0,
+  <span class="t">book</span>:   { bids: [{price, size} ×5], asks: [{price, size} ×5] },  <span class="c">// rebuilt every round</span>
+  <span class="t">levels</span>: 10,                        <span class="c">// rows, both sides · 2…100, set by setDepth()</span>
+
+  <span class="t">tape</span>:   [{ round, time, agent, side, size, price }],   <span class="c">// last 200 fills</span>
+  <span class="t">news</span>:   [{ round, mid, text }],                        <span class="c">// last 12 headlines</span>
+  <span class="t">history</span>:[{ round, mid, bid, ask, fair }],               <span class="c">// whole session, 8000 cap</span>
+
+  <span class="t">agents</span>: [ { id, name, role, kind, maxSize, position, cash,
+              pnl, fills, last: { action, probs, intent, size, bill } } ],
+
+  <span class="t">stats</span>:  { buys, sells, holds, volume, calls, fails },
+  <span class="t">bill</span>:   { pricePerMTok, round: {…}, total: {…}, byAgent: {…} },
+  lastRoundMs: 348,
+}</pre></div>
+
+    <p class="sub" style="margin-top:14px">
+      <code>freshMarket()</code> opens at mid <b>99.60</b> against fair <b>100.00</b> on purpose: a market with
+      no gap and no headline is one where every agent rightly holds. The first headline arrives at round 0,
+      so round 1 has something to read.
+    </p>
+  </section>
+
+  <!-- ======================================================= 04 -->
+  <section id="replay">
+    <h2><span class="n">04</span> A replay is a job, not a request</h2>
+    <p class="sub">
+      A run takes minutes and costs money, so it cannot be one <code>await</code> behind an HTTP response.
+      It becomes an entry in a <code>Map</code>, and the browser subscribes to its events.
+    </p>
+
+    <div class="flow">
+      <div class="step"><div class="sn">request</div><div class="sv">POST /api/replay/run</div>
+        <div class="sd">body capped at 12 MB, CSV parsed on the way in</div></div>
+      <span class="arrow">→</span>
+      <div class="step"><div class="sn">job</div><div class="sv">jobs.set(id, job)</div>
+        <div class="sd">events[], subscribers, cancel flag</div></div>
+      <span class="arrow">→</span>
+      <div class="step"><div class="sn">work</div><div class="sv">runJob(job, params)</div>
+        <div class="sd">unawaited — the response returns the id immediately</div></div>
+      <span class="arrow">→</span>
+      <div class="step"><div class="sn">stream</div><div class="sv">GET /api/replay/stream?id=</div>
+        <div class="sd">SSE: meta · bar · progress · original · surrogate · done</div></div>
+      <span class="arrow">→</span>
+      <div class="step"><div class="sn">cancel</div><div class="sv">job.cancel = true</div>
+        <div class="sd">checked between bars and between surrogates</div></div>
+    </div>
+
+    <p class="sub" style="margin-top:16px">
+      Events are buffered in <code>job.events</code> as well as pushed, so a late subscriber replays the
+      backlog; <code>/api/replay/result?id=</code> answers the same job without a stream, which is exactly
+      what the Telegram app uses. Surrogates run inside the same job, one full replay each.
+    </p>
+  </section>
+
+  <!-- ======================================================= 05 -->
+  <section id="files">
+    <h2><span class="n">05</span> The files</h2>
+    <p class="sub">What each one exports, and the comment in it that explains the design decision.</p>
+
+    <div class="cards">
+      <div class="card">
+        <div class="ch"><span class="cn">market.mjs</span><span class="cl">447 lines</span></div>
+        <div class="ce">ASSET · freshMarket · runRound · setDepth</div>
+        <p class="cj">The live engine. Constants at the top, <code>brief()</code> per agent, one round function that
+          does news → calls → sizing → fills → reprice → mark.</p>
+        <p class="cq">“Always quote off the FIXED base width. Deriving the next width from the current bid/ask
+          compounds the maker's multiplier into a runaway spread.”</p>
+      </div>
+
+      <div class="card">
+        <div class="ch"><span class="cn">replay.mjs</span><span class="cl">349</span></div>
+        <div class="ce">DEFAULTS · replaySeries · compare</div>
+        <p class="cj">Walks bars forward, earns the previous bar's positions, asks five questions, sets target
+          positions, charges cost, repeats. <code>compare()</code> computes every number in the surrogate table.</p>
+        <p class="cq">“There is no way to see the future from inside a brief, and the loop cannot be reordered
+          without breaking that.”</p>
+      </div>
+
+      <div class="card">
+        <div class="ch"><span class="cn">server.mjs</span><span class="cl">431</span></div>
+        <div class="ce">(entry point — no exports)</div>
+        <p class="cj">HTTP, SSE, one loop, four controls, replay jobs, optional <code>ACCESS_TOKEN</code> gate on
+          <code>/api/*</code>, and static file serving for everything else.</p>
+        <p class="cq">“The one payload the UI renders. Keep it small — it ships every round.”</p>
+      </div>
+
+      <div class="card">
+        <div class="ch"><span class="cn">jev.mjs</span><span class="cl">92</span></div>
+        <div class="ce">MODEL · getKey · systemOne</div>
+        <p class="cj">The only file that knows TypeSafe exists. Key resolution: env → a key file →
+          <code>.env</code>, cached for the process lifetime.</p>
+        <p class="cq">“Any failure throws — callers decide the fallback.”</p>
+      </div>
+
+      <div class="card">
+        <div class="ch"><span class="cn">ohlcv.mjs</span><span class="cl">342</span></div>
+        <div class="ce">parseOHLCV · parseTs · detectTimeframe · describe · returnsOf · seriesFromReturns · makeSurrogate · synthSeries · pathCorrelation · csvOf · rng</div>
+        <p class="cj">Column sniffing, timestamp parsing, median-gap interval detection, descriptors, and the
+          built-in phase-randomiser used when Julia is missing.</p>
+        <p class="cq">“A surrogate keeps the statistical fingerprint of your data and none of its story.”</p>
+      </div>
+
+      <div class="card">
+        <div class="ch"><span class="cn">index.html</span><span class="cl">1 036 lines</span></div>
+        <div class="ce">(the whole UI, inline)</div>
+        <p class="cj">Three theme token sets, the ladder, tape, news, chart, collective view, bill, and one
+          <code>EventSource</code> that replaces <code>S</code> and calls <code>render()</code>.</p>
+        <p class="cq">“Every colour is a CSS custom property, so nothing is duplicated per theme — including the
+          canvas chart, which re-reads the active tokens on each draw.”</p>
+      </div>
+
+      <div class="card">
+        <div class="ch"><span class="cn">replay.js</span><span class="cl">755</span></div>
+        <div class="ce">(browser only — no exports)</div>
+        <p class="cj">Drop target, a 400-row quick scan that pre-guesses the interval before the server sees the
+          file, path drawing with its own pan/zoom, and the surrogate table.</p>
+        <p class="cq">Every surrogate is drawn in its own hue and can be brought forward — one surrogate, one path.</p>
+      </div>
+
+      <div class="card">
+        <div class="ch"><span class="cn">julia-surrogates.mjs</span><span class="cl">59</span></div>
+        <div class="ce">juliaSurrogates</div>
+        <p class="cj">Spawns one Julia process per run, JSON on stdin, JSON on stdout, 120 s timeout. Every
+          surrogate is generated in one call, so the ~8 s startup is paid once.</p>
+        <p class="cq">“Any failure throws and the caller falls back to the built-in phase-randomiser, so the app
+          keeps working on a machine without Julia.”</p>
+      </div>
+
+      <div class="card wide">
+        <div class="ch"><span class="cn">personas.mjs · surrogates.jl · corp001.mjs · md2html.mjs</span><span class="cl">13 · 68 · 189 · 163 lines</span></div>
+        <div class="ce">ROSTER · byId &nbsp;|&nbsp; the Julia program &nbsp;|&nbsp; init · status · fictional · csv · surrogates · refresh &nbsp;|&nbsp; the md → html template</div>
+        <p class="cj">
+          The roster is shared so the live market and the replay always describe the same five participants.
+          <code>surrogates.jl</code> maps six method names onto TimeseriesSurrogates.jl constructors.
+          <code>corp001.mjs</code> is a client of the server, not a second implementation: it starts a run and
+          reads the result. <code>md2html.mjs</code> is the manual's build step, in 163 lines with no markdown
+          dependency.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================= 06 -->
+  <section id="change">
+    <h2><span class="n">06</span> Where to change what</h2>
+    <p class="sub">Every knob is a named constant in one of two files.</p>
+
+    <table>
+      <thead><tr><th>You want</th><th>Constant or function</th><th>Where</th></tr></thead>
+      <tbody>
+        <tr><td>Wider or tighter quotes</td><td><code>SPREAD_BASE</code> (8 bp)</td><td>market.mjs:18</td></tr>
+        <tr><td>More price impact per share</td><td><code>IMPACT</code> (5.5e-6)</td><td>market.mjs:19</td></tr>
+        <tr><td>Faster pull back to fair value</td><td><code>REVERT</code> (0.07)</td><td>market.mjs:20</td></tr>
+        <tr><td>Agents that hold more often</td><td><code>HOLD_BAND</code> (0.12)</td><td>market.mjs:21</td></tr>
+        <tr><td>Bigger orders</td><td><code>MAX_SIZE</code>, and <code>maxLeverage</code> in replay</td><td>market.mjs:37 · replay.mjs:19</td></tr>
+        <tr><td>How deep the book can go</td><td><code>LEVELS_MAX</code>, <code>DEPTH0</code>, <code>TICK</code></td><td>market.mjs:14-17</td></tr>
+        <tr><td>Reword a question</td><td><code>brief()</code> / <code>briefFor()</code></td><td>market.mjs:140 · replay.mjs:83</td></tr>
+        <tr><td>Give an agent new information</td><td>its <code>state</code> branch in <code>brief()</code></td><td>market.mjs:140-255</td></tr>
+        <tr><td>A sixth participant</td><td><code>ROSTER</code> + <code>brief()</code> + <code>MAX_SIZE</code> + <code>briefFor()</code> + <code>maxLeverage</code></td><td>3 files · 5 edits</td></tr>
+        <tr><td>Cheaper or newer model</td><td><code>JEV_MODEL</code> env</td><td>jev.mjs:14</td></tr>
+        <tr><td>Round-trip cost in replay</td><td><code>costBps</code> (6)</td><td>replay.mjs:19 · or per run</td></tr>
+        <tr><td>A new endpoint</td><td>one branch in the request handler</td><td>server.mjs:268-400</td></tr>
+        <tr><td>What the UI receives</td><td><code>snapshot()</code></td><td>server.mjs:70</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <footer>
+    CORPORATION 001 &nbsp;·&nbsp; 9 files, ~3 500 lines, zero dependencies &nbsp;·&nbsp; Node 20+<br>
+    <b>line numbers verified against the working tree; the prose is the code's own</b>
+  </footer>
+
+</main>
+</body>
+</html>

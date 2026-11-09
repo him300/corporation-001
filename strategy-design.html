@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Corporation 001 — strategy slots (design)</title>
+<style>
+  :root{
+    --bg:#0a0b0d; --panel:#0f1114; --panel-2:#0b0d10;
+    --ink:#e9e7e2; --dim:#858c93; --faint:#6a727a;
+    --line:#1d2126; --line-2:#2a3037; --wire:#2f353c;
+    --amber:#d9a441; --blue:#6f9cc9; --green:#4fb286; --red:#d4635a; --violet:#9b8cc9;
+    --ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#faf8f4; --panel:#ffffff; --panel-2:#f4f0e8;
+      --ink:#16150f; --dim:#6a655a; --faint:#7f7970;
+      --line:#e4dfd3; --line-2:#d3ccbc; --wire:#cfc8b8;
+      --amber:#a9761f; --blue:#4a6f96; --green:#3d7d5c; --red:#b4433c; --violet:#6b5b9a;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:56px 24px 120px;background:var(--bg);color:var(--ink);
+    font:15px/1.55 var(--ui);-webkit-font-smoothing:antialiased}
+  main{max-width:960px;margin:0 auto}
+
+  .overline{font:500 10px/1 var(--mono);letter-spacing:.24em;text-transform:uppercase;color:var(--faint)}
+  h1{font:600 34px/1.15 var(--ui);letter-spacing:-.025em;margin:16px 0 0}
+  .standfirst{font-size:16px;line-height:1.62;color:var(--dim);max-width:66ch;margin:16px 0 0}
+  .standfirst b{color:var(--ink);font-weight:500}
+  .meta{font:400 10px/1.7 var(--mono);letter-spacing:.06em;color:var(--faint);margin-top:20px}
+  .meta span{color:var(--dim)}
+
+  h2{display:flex;align-items:baseline;gap:14px;margin:64px 0 0;padding-top:20px;
+     border-top:1px solid var(--line);font:600 14px/1.3 var(--ui)}
+  h2 .n{font:500 10.5px/1 var(--mono);letter-spacing:.18em;color:var(--faint)}
+  .sub{font-size:13px;line-height:1.65;color:var(--dim);margin:10px 0 0;max-width:76ch}
+  p code,li code,td code,.sub code{font:400 11.5px var(--mono);color:var(--ink);
+    background:var(--panel);border:1px solid var(--line);border-radius:2px;padding:1px 4px}
+
+  /* ---------- verdict ---------- */
+  .verdict{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:12px;margin:26px 0 0}
+  .vbox{border:1px solid var(--line);border-radius:3px;background:var(--panel);padding:16px 18px}
+  .vbox.yes{border-color:var(--line-2)}
+  .vk{font:500 8.5px/1 var(--mono);letter-spacing:.17em;text-transform:uppercase;color:var(--faint)}
+  .vv{font:600 15px/1.35 var(--ui);margin-top:9px;letter-spacing:-.01em}
+  .vd{font-size:12px;line-height:1.55;color:var(--dim);margin-top:7px}
+  .vv em{font-style:normal;color:var(--green)}
+  .vv b{font-weight:600}
+
+  /* ---------- figure ---------- */
+  .fig{margin:22px 0 0;padding:18px;background:var(--panel-2);border:1px solid var(--line);
+       border-radius:3px;overflow-x:auto}
+  .fig svg{display:block;width:100%;min-width:780px;height:auto}
+  .box{fill:var(--panel);stroke:var(--line)}
+  .chip{fill:var(--panel-2);stroke:var(--line)}
+  .wire{stroke:var(--wire);stroke-width:1;fill:none}
+  .dash{stroke:var(--wire);stroke-width:1;fill:none;stroke-dasharray:3 4}
+  svg text{font-family:var(--mono)}
+  .f-h{font-size:9px;letter-spacing:.17em;fill:var(--faint)}
+  .f-m{font-size:10.5px;fill:var(--ink)}
+  .f-d{font-size:9px;fill:var(--dim)}
+  .f-a{font-size:8.5px;fill:var(--amber)}
+  .f-b{font-size:8.5px;fill:var(--blue)}
+
+  /* ---------- code ---------- */
+  pre.code{margin:22px 0 0;padding:16px 18px;background:var(--panel-2);border:1px solid var(--line);
+    border-radius:3px;overflow-x:auto;font:400 11.5px/1.8 var(--mono);color:var(--ink);white-space:pre}
+  pre.code .c{color:var(--faint)}
+  pre.code .k{color:var(--blue)}
+  pre.code .s{color:var(--amber)}
+  pre.code .p{color:var(--violet)}
+  .cap{margin:12px 0 0;font:400 10.5px/1.7 var(--mono);color:var(--faint);max-width:80ch}
+
+  /* ---------- tables ---------- */
+  table{width:100%;border-collapse:collapse;margin:22px 0 0;font-size:12.5px}
+  th,td{text-align:left;padding:9px 14px 9px 0;vertical-align:top;border-top:1px solid var(--line)}
+  th{font:500 8.5px/1.4 var(--mono);letter-spacing:.15em;text-transform:uppercase;
+     color:var(--faint);padding-top:0;border-top:0}
+  td:first-child{color:var(--ink);white-space:nowrap}
+  td code{font-size:10.5px}
+  .tag{display:inline-block;font:400 9px/1.5 var(--mono);letter-spacing:.06em;
+       border:1px solid var(--line-2);border-radius:2px;padding:1px 5px;color:var(--dim)}
+  .tag.cur{color:var(--green);border-color:color-mix(in srgb, var(--green) 40%, transparent)}
+  .tag.new{color:var(--violet);border-color:color-mix(in srgb, var(--violet) 44%, transparent)}
+  .tag.low{color:var(--red);border-color:color-mix(in srgb, var(--red) 40%, transparent)}
+
+  /* ---------- maths ---------- */
+  .maths{margin:22px 0 0;padding:18px 20px;border:1px solid var(--line);border-radius:3px;background:var(--panel)}
+  .eq{font:400 13px/2.1 var(--mono);color:var(--ink);white-space:pre;overflow-x:auto}
+  .eq i{color:var(--dim);font-style:normal;font-size:11px}
+  .terms{display:grid;grid-template-columns:1fr 1fr;gap:10px 26px;margin-top:14px}
+  .term{border-top:1px solid var(--line);padding-top:9px}
+  .term b{font:500 11px/1.4 var(--mono);color:var(--amber)}
+  .term span{display:block;font-size:12px;line-height:1.5;color:var(--dim);margin-top:4px}
+
+  /* ---------- UI mock ---------- */
+  .mock{margin:22px 0 0;padding:16px;border:1px solid var(--line);border-radius:3px;
+        background:var(--panel-2)}
+  .mockbar{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding-bottom:12px;border-bottom:1px solid var(--line);font:400 9px/1 var(--mono);
+    letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+  .mockbar .dot{margin-left:auto;display:flex;align-items:center;gap:6px;letter-spacing:.12em}
+  .mockbar .dot::before{content:"";width:5px;height:5px;background:var(--amber);border-radius:50%}
+  .strip{display:flex;gap:9px;overflow-x:auto;padding:14px 0 4px}
+  .acard{flex:0 0 176px;border:1px solid var(--line);border-radius:3px;background:var(--panel);
+    padding:12px 13px 13px}
+  .acard .top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+  .acard .nm{font:500 12.5px/1.2 var(--ui);color:var(--ink)}
+  .acard .rl{font:400 8px/1 var(--mono);letter-spacing:.14em;color:var(--faint);text-transform:uppercase}
+  .acard select{margin-top:9px;width:100%;font:400 10.5px/1.5 var(--mono);color:var(--ink);
+    background:var(--panel-2);border:1px solid var(--line-2);border-radius:2px;padding:4px 20px 4px 6px;
+    appearance:none;cursor:pointer;background-repeat:no-repeat;background-position:right 7px center;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 4 4-4' fill='none' stroke='%23858c93' stroke-width='1.2'/%3E%3C/svg%3E")}
+  .acard select:focus{outline:1px solid var(--blue);outline-offset:1px}
+  .acard .dec{display:flex;align-items:baseline;gap:7px;margin-top:11px}
+  .acard .dc{font:600 12px/1 var(--mono)}
+  .acard .dc.buy{color:var(--green)} .acard .dc.sell{color:var(--red)} .acard .dc.hold{color:var(--dim)}
+  .acard .ds{font:400 10px/1 var(--mono);color:var(--dim)}
+  .acard .bar{height:3px;background:var(--line);border-radius:2px;margin-top:9px;overflow:hidden;display:flex}
+  .acard .bar i{display:block;height:100%}
+  .acard .foot{display:flex;justify-content:space-between;margin-top:9px;
+    font:400 9.5px/1 var(--mono);color:var(--faint)}
+  .acard .foot b{color:var(--dim);font-weight:400}
+  .acard .why{margin-top:9px;font:400 9.5px/1.5 var(--mono);color:var(--faint)}
+
+  /* maker panel */
+  .maker{margin-top:14px;border:1px solid var(--line);border-radius:3px;background:var(--panel);
+    padding:14px 16px 16px}
+  .maker .mh{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+    padding-bottom:11px;border-bottom:1px solid var(--line)}
+  .maker .mh .t{font:500 12.5px/1.2 var(--ui)}
+  .maker .mh .s{font:400 9px/1 var(--mono);letter-spacing:.13em;color:var(--faint);text-transform:uppercase}
+  .mgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:14px}
+  .lad{font:400 11px/1.9 var(--mono)}
+  .lad .row{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--line);padding:3px 0}
+  .lad .row:first-child{border-top:0}
+  .lad .ask{color:var(--red)} .lad .bid{color:var(--green)}
+  .lad .res{color:var(--amber)}
+  .lad .k{color:var(--faint)}
+  .inv{margin-top:12px}
+  .inv .ilk{display:flex;justify-content:space-between;font:400 9px/1 var(--mono);
+    letter-spacing:.12em;color:var(--faint);text-transform:uppercase}
+  .inv .track{height:5px;background:var(--line);border-radius:3px;margin-top:7px;position:relative;overflow:hidden}
+  .inv .track i{position:absolute;top:0;height:100%;background:var(--amber);opacity:.75}
+  .inv .track u{position:absolute;left:50%;top:-2px;width:1px;height:9px;background:var(--faint)}
+  .knobs{display:grid;gap:9px}
+  .knob{display:grid;grid-template-columns:52px 1fr 56px;align-items:center;gap:9px;
+    font:400 9.5px/1 var(--mono);color:var(--faint)}
+  .knob input[type=range]{width:100%;height:2px;appearance:none;background:var(--line-2);
+    border-radius:2px;outline:none;cursor:pointer}
+  .knob input[type=range]::-webkit-slider-thumb{appearance:none;width:9px;height:9px;border-radius:50%;
+    background:var(--ink);cursor:pointer}
+  .knob output{text-align:right;color:var(--ink);font-variant-numeric:tabular-nums}
+  .readout{display:flex;flex-wrap:wrap;gap:14px 20px;margin-top:13px;padding-top:12px;
+    border-top:1px solid var(--line)}
+  .ro{display:flex;flex-direction:column;gap:4px}
+  .ro .rk{font:400 8px/1 var(--mono);letter-spacing:.13em;color:var(--faint);text-transform:uppercase}
+  .ro .rv{font:400 12.5px/1 var(--mono);color:var(--ink);font-variant-numeric:tabular-nums}
+  .ro .rv.a{color:var(--amber)}
+  .mocknote{margin:10px 0 0;font:400 9.5px/1.6 var(--mono);color:var(--faint)}
+
+  /* ---------- callout / list ---------- */
+  .callout{margin:22px 0 0;padding:16px 18px;border:1px solid var(--line);border-radius:3px;
+    background:var(--panel);border-left:2px solid var(--amber)}
+  .callout p{margin:0;font-size:13px;line-height:1.65;color:var(--dim)}
+  .callout p+p{margin-top:9px}
+  .callout b{color:var(--ink);font-weight:500}
+
+  ol.steps{list-style:none;counter-reset:s;margin:22px 0 0;padding:0}
+  ol.steps>li{position:relative;padding:14px 0 14px 38px;border-top:1px solid var(--line)}
+  ol.steps>li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:17px;
+    font:500 9.5px/1 var(--mono);color:var(--faint)}
+  ol.steps h3{margin:0;font:500 12.5px/1.4 var(--ui);color:var(--ink)}
+  ol.steps p{margin:6px 0 0;font-size:12.5px;line-height:1.6;color:var(--dim);max-width:84ch}
+  .gate{margin-top:8px;font:400 10px/1.8 var(--mono);color:var(--faint)}
+  .gate b{color:var(--green);font-weight:400}
+
+  footer{margin:80px 0 0;padding-top:20px;border-top:1px solid var(--line);
+    font:400 10px/1.85 var(--mono);letter-spacing:.05em;color:var(--faint)}
+  footer b{color:var(--dim);font-weight:400}
+
+  @media (max-width:820px){
+    body{padding:36px 16px 90px}
+    h1{font-size:27px}
+    .verdict{grid-template-columns:1fr}
+    .mgrid{grid-template-columns:1fr}
+    .terms{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<main>
+
+  <div class="overline">Corporation 001 · future feature · coming soon · not implemented</div>
+  <h1>Strategy slots for traders and the maker</h1>
+  <p class="standfirst">
+    Give every participant a <b>swappable strategy</b>: today's Jev question, a rule from a paper, or a
+    proper market-making model for Aurelia — without touching sizing, fills, impact or P&amp;L. The
+    engine already has the two seams this needs. This page is the layout and the contract, for you to
+    accept or reject before I write it.
+  </p>
+  <p class="meta">target files <span>strategies.mjs (new) · market.mjs · replay.mjs · server.mjs · index.html</span> &nbsp;·&nbsp; status <span>future feature — coming soon (nothing below is implemented)</span></p>
+
+  <!-- ============================================ 00 -->
+  <section id="verdict">
+    <h2><span class="n">00</span> Is it possible</h2>
+    <div class="verdict">
+      <div class="vbox yes">
+        <div class="vk">Answer</div>
+        <div class="vv">Yes — <em>and the hard part is already done</em></div>
+        <div class="vd">Both engines funnel every decision through one scalar and one pair. Swap what
+          produces them and nothing downstream notices.</div>
+      </div>
+      <div class="vbox">
+        <div class="vk">Effort</div>
+        <div class="vv">≈ 600 lines</div>
+        <div class="vd">1 new file, 4 touched, 3 increments. No new dependencies, no schema migration.</div>
+      </div>
+      <div class="vbox">
+        <div class="vk">What it costs you</div>
+        <div class="vv">Fidelity, stated</div>
+        <div class="vd">There is no queue and no latency, so some published algorithms can only be
+          approximated here. §09 says which, honestly.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================ 01 -->
+  <section id="seam">
+    <h2><span class="n">01</span> The seam that already exists</h2>
+    <p class="sub">
+      A trader's entire output is one number, <code>intent</code>, used at <code>market.mjs:357</code>.
+      The maker's entire output is one pair, <code>{ mult, skew }</code>, consumed by
+      <code>rebuild(m, mult, skew)</code> at line 97. A strategy is anything that produces those.
+    </p>
+
+    <div class="fig">
+      <svg viewBox="0 0 880 330" role="img" aria-label="Decision pipeline showing where strategies plug in and what stays untouched.">
+        <defs>
+          <marker id="s" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--wire)"/>
+          </marker>
+        </defs>
+
+        <!-- state -->
+        <rect class="box" x="40" y="96" width="168" height="104" rx="2"/>
+        <text class="f-h" x="56" y="118">THE STATE</text>
+        <text class="f-m" x="56" y="140">mid · bid · ask</text>
+        <text class="f-m" x="56" y="158">spread · position</text>
+        <text class="f-m" x="56" y="176">tape · fair · news</text>
+        <text class="f-d" x="56" y="192">+ per-agent history</text>
+
+        <!-- strategy -->
+        <rect class="box" x="246" y="48" width="232" height="200" rx="2"/>
+        <text class="f-h" x="262" y="70">THE STRATEGY SLOT</text>
+
+        <rect class="chip" x="262" y="82" width="200" height="66" rx="2"/>
+        <text class="f-a" x="274" y="101">MODEL · one Jev question</text>
+        <text class="f-d" x="274" y="119">returns a distribution</text>
+        <text class="f-d" x="274" y="135">→ intent = p(buy) − p(sell)</text>
+
+        <rect class="chip" x="262" y="158" width="200" height="66" rx="2"/>
+        <text class="f-a" x="274" y="177">RULE · a paper's formula</text>
+        <text class="f-d" x="274" y="195">returns a signed strength</text>
+        <text class="f-d" x="274" y="211">→ intent = side × strength</text>
+
+        <!-- posture -->
+        <rect class="box" x="516" y="96" width="140" height="104" rx="2"/>
+        <text class="f-h" x="532" y="118">THE POSTURE</text>
+        <text class="f-m" x="532" y="140">intent  −1…1</text>
+        <text class="f-d" x="532" y="158">or { mult, skew }</text>
+        <text class="f-d" x="532" y="176">for the maker</text>
+        <text class="f-b" x="532" y="192">the only interface</text>
+
+        <!-- execution -->
+        <rect class="box" x="694" y="48" width="148" height="200" rx="2"/>
+        <text class="f-h" x="710" y="70">UNCHANGED</text>
+        <text class="f-m" x="710" y="92">dead zone</text>
+        <text class="f-m" x="710" y="110">size · clamp</text>
+        <text class="f-m" x="710" y="128">fill · slip</text>
+        <text class="f-m" x="710" y="146">impact · revert</text>
+        <text class="f-m" x="710" y="164">mark to mid</text>
+        <text class="f-m" x="710" y="182">rebuild book</text>
+        <text class="f-b" x="710" y="204">market.mjs:357</text>
+        <text class="f-b" x="710" y="220">market.mjs:97</text>
+
+        <!-- wires -->
+        <path class="wire" d="M208 148 H240" marker-end="url(#s)"/>
+        <path class="wire" d="M478 148 H510" marker-end="url(#s)"/>
+        <path class="wire" d="M656 148 H688" marker-end="url(#s)"/>
+
+        <!-- feedback -->
+        <path class="wire" d="M768 248 V288 H124 V202" marker-end="url(#s)"/>
+        <text class="f-d" x="140" y="306">the book, the tape, the inventory and the P&amp;L become the next round's state</text>
+      </svg>
+    </div>
+
+    <p class="cap">
+      Amber marks what becomes pluggable. The right-hand column must not move — it is where the
+      simulator's honesty lives: the dead zone, the fill, the impact, the mark. Blue is just the
+      file:line where each of those sits.
+    </p>
+  </section>
+
+  <!-- ============================================ 02 -->
+  <section id="contract">
+    <h2><span class="n">02</span> The contract</h2>
+    <p class="sub">
+      One file exports a registry. Nothing else in the app knows strategy names; the engine asks the
+      registry for <code>entry.posture()</code> and keeps its own code path.
+    </p>
+
+    <pre class="code"><span class="c">// strategies.mjs — proposed</span>
+<span class="k">export const</span> STRATEGIES = {
+
+  <span class="s">'mom.jev'</span>: {
+    agent: <span class="s">'mom'</span>, kind: <span class="s">'model'</span>, version: 1,
+    brief: (ctx) =&gt; ({ state, question }),        <span class="c">// exactly today's brief()</span>
+  },
+
+  <span class="s">'mom.ema'</span>: {
+    agent: <span class="s">'mom'</span>, kind: <span class="s">'rule'</span>, version: 1, source: <span class="s">'—'</span>,
+    needs: [<span class="s">'closes'</span>, <span class="s">'sigma'</span>],
+    params: {                                       <span class="c">// [min, max, default] → auto-rendered UI</span>
+      fast: [<span class="p">3</span>, <span class="p">20</span>, <span class="p">8</span>],
+      slow: [<span class="p">10</span>, <span class="p">60</span>, <span class="p">24</span>],
+      volGate: [<span class="p">0</span>, <span class="p">3</span>, <span class="p">1.2</span>],
+    },
+    decide(ctx, p) {
+      <span class="k">const</span> z = (ema(ctx.closes, p.fast) - ema(ctx.closes, p.slow))
+              / (ctx.sigma * Math.sqrt(p.slow) || <span class="p">1</span>);
+      <span class="k">if</span> (Math.abs(z) &lt; p.volGate) <span class="k">return</span> { side: <span class="p">0</span>, strength: <span class="p">0</span> };
+      <span class="k">return</span> { side: Math.sign(z), strength: Math.min(<span class="p">1</span>, Math.abs(z) / <span class="p">2</span>) };
+    },
+  },
+
+  <span class="s">'mm.fixed'</span>: {                                 <span class="c">// today's maker, unchanged</span>
+    agent: <span class="s">'mm'</span>, kind: <span class="s">'quote'</span>, version: 1,
+    quote: (ctx) =&gt; ({ mult: <span class="p">1</span>, skew: <span class="p">0</span> }),
+  },
+
+  <span class="s">'mm.as'</span>: {                                    <span class="c">// Avellaneda–Stoikov, §04</span>
+    agent: <span class="s">'mm'</span>, kind: <span class="s">'quote'</span>, version: 1, source: <span class="s">'Avellaneda &amp; Stoikov (2008)'</span>,
+    params: { gamma: [<span class="p">0.1</span>, <span class="p">20</span>, <span class="p">5</span>], kappa: [<span class="p">5</span>, <span class="p">120</span>, <span class="p">25</span>], horizon: [<span class="p">5</span>, <span class="p">60</span>, <span class="p">20</span>] },
+    quote(ctx, p) {
+      <span class="k">const</span> v = p.gamma * ctx.sigma ** <span class="p">2</span> * p.horizon;
+      <span class="k">const</span> r = ctx.mid - (ctx.inventory - ctx.target) * v;      <span class="c">// reservation price</span>
+      <span class="k">const</span> half = v / <span class="p">2</span> + Math.log(<span class="p">1</span> + p.gamma / p.kappa) / p.gamma;
+      <span class="k">return</span> { mult: (half * <span class="p">2</span>) / baseHalf(ctx.mid), skew: r - ctx.mid };
+    },
+  },
+};</pre>
+
+    <p class="cap">
+      A <code>quote</code> strategy returns the same two numbers the Jev-based maker already produces
+      (line 351), so <code>rebuild()</code> needs no knowledge of it. <code>params</code> as
+      <code>[min, max, default]</code> is what lets the UI render sliders and validate input without a
+      second schema.
+    </p>
+  </section>
+
+  <!-- ============================================ 03 -->
+  <section id="catalogue">
+    <h2><span class="n">03</span> What goes in the slots</h2>
+    <p class="sub">
+      Every participant gets a short list. The current behaviour is always one of them, so an
+      untouched run is byte-identical to today.
+    </p>
+
+    <table>
+      <thead><tr><th>Agent</th><th>Slot</th><th>Reads</th><th>Emits</th><th></th></tr></thead>
+      <tbody>
+        <tr><td>Kestrel</td><td><code>mom.jev</code> momentum question</td><td>1 / 3 / 5-round change, last 6 prints</td><td>intent</td><td><span class="tag cur">today</span></td></tr>
+        <tr><td></td><td><code>mom.ema</code> dual EMA, vol-normalised</td><td>closes, σ, spread</td><td>intent</td><td><span class="tag">rule</span></td></tr>
+        <tr><td></td><td><code>mom.brk</code> Donchian 20 / Keltner stop</td><td>rolling high / low</td><td>intent</td><td><span class="tag">rule</span></td></tr>
+        <tr><td></td><td><code>mom.ofi</code> order-flow imbalance</td><td>book deltas</td><td>intent</td><td><span class="tag low">low fidelity</span></td></tr>
+
+        <tr><td>Hollis</td><td><code>val.jev</code> value gap question</td><td>fair vs price</td><td>intent</td><td><span class="tag cur">today</span></td></tr>
+        <tr><td></td><td><code>val.z</code> z-score reversion</td><td>trailing mean ± σ</td><td>intent</td><td><span class="tag">rule</span></td></tr>
+        <tr><td></td><td><code>val.kalman</code> filtered fair value</td><td>closes, process noise</td><td>intent</td><td><span class="tag">rule</span></td></tr>
+
+        <tr><td>Vega</td><td><code>news.jev</code> headline question</td><td>headline, age, move since</td><td>intent</td><td><span class="tag cur">today</span></td></tr>
+        <tr><td></td><td><code>news.pead</code> post-event drift, decayed</td><td>headline surprise, t</td><td>intent</td><td><span class="tag">rule</span></td></tr>
+
+        <tr><td>Nyx</td><td><code>mm2.jev</code> spread question</td><td>spread, own fills</td><td>intent</td><td><span class="tag cur">today</span></td></tr>
+        <tr><td></td><td><code>mm2.ac</code> Almgren–Chriss work-out</td><td>position, λ, σ, horizon</td><td>intent (scheduled)</td><td><span class="tag">rule</span></td></tr>
+
+        <tr><td>Aurelia</td><td><code>mm.fixed</code> 8 bp × mult + skew</td><td>inventory, drift</td><td>mult, skew</td><td><span class="tag cur">today</span></td></tr>
+        <tr><td></td><td><code>mm.band</code> inventory band</td><td>|q| / Q<sub>max</sub></td><td>mult, skew</td><td><span class="tag new">new</span></td></tr>
+        <tr><td></td><td><code>mm.as</code> Avellaneda–Stoikov</td><td>σ, q, horizon, γ, κ</td><td>mult, skew</td><td><span class="tag new">new</span></td></tr>
+        <tr><td></td><td><code>mm.glt</code> Guéant–Lehalle–Fernandez-Tapia</td><td>same + inventory limits</td><td>mult, skew</td><td><span class="tag new">new</span></td></tr>
+        <tr><td></td><td><code>mm.regime</code> Jev tags the regime, model quotes</td><td>tape shape</td><td>mult, skew</td><td><span class="tag new">new</span></td></tr>
+      </tbody>
+    </table>
+
+    <p class="cap">
+      <code>mm.regime</code> is the interesting hybrid: the Jev answers a <em>classification</em>
+      question — calm / trending / news-driven — and the regime picks the <code>(γ, κ)</code>
+      parameter set. The model keeps the job it is genuinely good at (reading a messy tape); the
+      quote is still a formula you can audit.
+    </p>
+  </section>
+
+  <!-- ============================================ 04 -->
+  <section id="maker">
+    <h2><span class="n">04</span> The maker, properly</h2>
+    <p class="sub">
+      What Aurelia does today is a one-parameter inventory skew plus a width the Jev votes on. That is
+      the degenerate case of the standard inventory model — so the upgrade is a family, not a rewrite.
+    </p>
+
+    <div class="maths">
+      <div class="eq">r  =  s − q · γ · σ² · (T − t)                        <i>reservation price</i>
+δ  =  γ σ² (T − t) / 2  +  (1/γ) · ln(1 + γ/κ)          <i>half-spread</i>
+
+bid = r − δ        ask = r + δ</div>
+      <div class="terms">
+        <div class="term"><b>s</b><span>the mid. Already in state.</span></div>
+        <div class="term"><b>q</b><span>inventory minus target — <code>position − 4000</code>, already computed at line 339.</span></div>
+        <div class="term"><b>σ</b><span>per-round volatility. Estimate as an EWMA of realised mid returns; today's replay already computes stdev.</span></div>
+        <div class="term"><b>T − t</b><span>rounds of horizon. A policy choice, not an estimate.</span></div>
+        <div class="term"><b>γ</b><span>risk aversion. <em>The</em> dial: γ→0 reproduces a flat 8 bp quote.</span></div>
+        <div class="term"><b>κ</b><span>fill intensity decay. As γ→0 the half-spread tends to <code>1/κ</code>, so κ sets the floor; at γ = 5, κ ≈ 22.6 lands on today's 4 bp half.</span></div>
+      </div>
+    </div>
+
+    <p class="cap">
+      Two properties worth noticing before you accept it. The reservation price <b>tilts the whole
+      quote</b>, not just the width — long inventory quotes lower on both sides, which is what makes
+      the position mean-revert instead of drifting. And the spread has a floor <code>1/κ</code>: the
+      model cannot quote tighter than its assumed fill rate, which is the honest way to encode
+      “I don't know how fast I get filled here”.
+    </p>
+
+    <div class="callout">
+      <p><b>What maps to what.</b> Today: <code>mult</code> = Jev-voted 0.6–2.2, <code>skew</code> =
+      <code>−(position−4000)/4000 × 0.035</code>. Under A–S the same two fields become
+      <code>mult = 2δ / baseHalf</code> and <code>skew = r − mid</code>. The ladder, tape, P&amp;L and
+      every screen keep working — <em>that is the acceptance test</em>: switching the maker strategy
+      must not require a new renderer.</p>
+    </div>
+  </section>
+
+  <!-- ============================================ 05 -->
+  <section id="layout">
+    <h2><span class="n">05</span> The layout</h2>
+    <p class="sub">
+      Below is a working mock, not a screenshot: the selects change, and the maker panel computes the
+      formula above live from the sliders. Numbers are illustrative. This is the part to accept.
+    </p>
+
+    <div class="mock">
+      <div class="mockbar">
+        <span>live strip · strategies</span>
+        <span class="dot">mock</span>
+      </div>
+
+      <div class="strip">
+        <div class="acard">
+          <div class="top"><span class="nm">Aurelia</span><span class="rl">maker</span></div>
+          <select aria-label="Aurelia strategy">
+            <option value="mm.fixed">mm.fixed · 8 bp</option>
+            <option value="mm.band">mm.band · inventory</option>
+            <option value="mm.as">mm.as · Avellaneda</option>
+            <option value="mm.glt">mm.glt · GLT</option>
+            <option value="mm.regime">mm.regime · Jev tags</option>
+          </select>
+          <div class="dec"><span class="dc hold">widen</span><span class="ds">1.42× · skew −0.4¢</span></div>
+          <div class="bar"><i style="width:18%;background:var(--green)"></i><i style="width:26%;background:var(--dim)"></i><i style="width:56%;background:var(--red)"></i></div>
+          <div class="foot"><span>inv <b>+1 240</b></span><span>pnl <b>−412</b></span></div>
+          <div class="why">quotes 11.4 bp, tilted −0.4¢</div>
+        </div>
+
+        <div class="acard">
+          <div class="top"><span class="nm">Kestrel</span><span class="rl">momentum</span></div>
+          <select aria-label="Kestrel strategy">
+            <option value="mom.jev">mom.jev · question</option>
+            <option value="mom.ema">mom.ema · EMA cross</option>
+            <option value="mom.brk">mom.brk · Donchian</option>
+            <option value="mom.ofi">mom.ofi · order flow</option>
+          </select>
+          <div class="dec"><span class="dc buy">buy</span><span class="ds">60 sh · 100.04</span></div>
+          <div class="bar"><i style="width:62%;background:var(--green)"></i><i style="width:8%;background:var(--dim)"></i><i style="width:30%;background:var(--red)"></i></div>
+          <div class="foot"><span>intent <b>0.32</b></span><span>pnl <b>+186</b></span></div>
+          <div class="why">p(buy) 0.62 · p(sell) 0.30</div>
+        </div>
+
+        <div class="acard">
+          <div class="top"><span class="nm">Hollis</span><span class="rl">value</span></div>
+          <select aria-label="Hollis strategy">
+            <option value="val.jev">val.jev · value gap</option>
+            <option value="val.z">val.z · z-score</option>
+            <option value="val.kalman">val.kalman · Kalman</option>
+          </select>
+          <div class="dec"><span class="dc buy">buy</span><span class="ds">40 sh · 99.93</span></div>
+          <div class="bar"><i style="width:55%;background:var(--green)"></i><i style="width:15%;background:var(--dim)"></i><i style="width:30%;background:var(--red)"></i></div>
+          <div class="foot"><span>edge <b>+0.11%</b></span><span>pnl <b>+64</b></span></div>
+          <div class="why">fair 100.04 · gap 0.11%</div>
+        </div>
+
+        <div class="acard">
+          <div class="top"><span class="nm">Vega</span><span class="rl">news</span></div>
+          <select aria-label="Vega strategy">
+            <option value="news.jev">news.jev · headline</option>
+            <option value="news.pead">news.pead · drift</option>
+          </select>
+          <div class="dec"><span class="dc hold">hold</span><span class="ds">absorbed</span></div>
+          <div class="bar"><i style="width:24%;background:var(--green)"></i><i style="width:58%;background:var(--dim)"></i><i style="width:18%;background:var(--red)"></i></div>
+          <div class="foot"><span>aged <b>4 rds</b></span><span>pnl <b>+21</b></span></div>
+          <div class="why">headline priced 2 rounds ago</div>
+        </div>
+
+        <div class="acard">
+          <div class="top"><span class="nm">Nyx</span><span class="rl">scalper</span></div>
+          <select aria-label="Nyx strategy">
+            <option value="mm2.jev">mm2.jev · spread</option>
+            <option value="mm2.ac">mm2.ac · work-out</option>
+          </select>
+          <div class="dec"><span class="dc sell">sell</span><span class="ds">20 sh · 99.79</span></div>
+          <div class="bar"><i style="width:20%;background:var(--green)"></i><i style="width:12%;background:var(--dim)"></i><i style="width:68%;background:var(--red)"></i></div>
+          <div class="foot"><span>fills <b>14</b></span><span>pnl <b>−33</b></span></div>
+          <div class="why">spread 8.0 bp · pays at 0.6</div>
+        </div>
+      </div>
+
+      <!-- maker panel -->
+      <div class="maker">
+        <div class="mh">
+          <span class="t">Aurelia · quote engine</span>
+          <span class="s" id="mq">mm.fixed · 8 bp + skew</span>
+        </div>
+
+        <div class="mgrid">
+          <div>
+            <div class="lad">
+              <div class="row"><span class="k">ask</span><span class="ask" id="o-ask">100.04</span></div>
+              <div class="row"><span class="k">reservation r</span><span class="res" id="o-r">100.00</span></div>
+              <div class="row"><span class="k">mid s</span><span id="o-mid">100.00</span></div>
+              <div class="row"><span class="k">bid</span><span class="bid" id="o-bid">99.96</span></div>
+            </div>
+
+            <div class="inv">
+              <div class="ilk"><span>inventory q</span><span id="o-q">+500 / ±2 000</span></div>
+              <div class="track"><u></u><i id="o-inv" style="left:50%;width:12.5%"></i></div>
+            </div>
+
+            <div class="readout">
+              <div class="ro"><span class="rk">half-spread</span><span class="rv a" id="o-half">4.0 bp</span></div>
+              <div class="ro"><span class="rk">total</span><span class="rv" id="o-tot">8.0 bp</span></div>
+              <div class="ro"><span class="rk">tilt</span><span class="rv" id="o-skew">0.00¢</span></div>
+            </div>
+          </div>
+
+          <div class="knobs">
+            <label class="knob"><span>γ risk</span><input id="k-g" type="range" min="0.2" max="20" step="0.2" value="5"><output id="v-g">5.0</output></label>
+            <label class="knob"><span>κ fills</span><input id="k-k" type="range" min="5" max="120" step="0.2" value="25"><output id="v-k">25</output></label>
+            <label class="knob"><span>σ / round</span><input id="k-s" type="range" min="2" max="60" step="1" value="10"><output id="v-s">0.10%</output></label>
+            <label class="knob"><span>T − t</span><input id="k-h" type="range" min="5" max="60" step="1" value="20"><output id="v-h">20</output></label>
+            <label class="knob"><span>q inv</span><input id="k-q" type="range" min="-2000" max="2000" step="50" value="500"><output id="v-q">+500</output></label>
+          </div>
+        </div>
+      </div>
+
+      <p class="mocknote">
+        mock · the panel runs r = s − qγσ²(T−t) and δ = γσ²(T−t)/2 + ln(1+γ/κ)/γ on the sliders.
+        With q = 0 and κ ≈ 22.6 it lands on today's 8 bp; move q and watch the whole quote tilt.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================ 06 -->
+  <section id="wiring">
+    <h2><span class="n">06</span> What it touches</h2>
+    <p class="sub">Four files, all additive. No route changes break, no state field is removed.</p>
+
+    <table>
+      <thead><tr><th>Layer</th><th>Change</th><th>Risk</th></tr></thead>
+      <tbody>
+        <tr><td>market.mjs</td><td><code>runRound</code> asks the registry instead of calling <code>brief()</code> directly; the maker branch calls <code>quote()</code> and writes the same <code>_quote</code></td><td>low — 2 call sites</td></tr>
+        <tr><td>replay.mjs</td><td>same substitution inside the bar loop; <code>maxLeverage</code> becomes per-strategy</td><td>low</td></tr>
+        <tr><td>strategies.mjs</td><td>new: registry, <code>params</code> validation, the indicator helpers (<code>ema</code>, <code>zscore</code>, <code>donchian</code>, <code>kappa</code>)</td><td>new code</td></tr>
+        <tr><td>server.mjs</td><td><code>{"cmd":"strategy","agent","id"}</code> on <code>/api/control</code>; <code>snapshot()</code> gains <code>agents[].strategy</code></td><td>low</td></tr>
+        <tr><td>index.html</td><td>a <code>&lt;select&gt;</code> per card; the maker panel; the strategy name on the tape row</td><td>cosmetic</td></tr>
+        <tr><td>jev.mjs</td><td>none</td><td>—</td></tr>
+        <tr><td>ohlcv.mjs</td><td>none</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============================================ 07 -->
+  <section id="honesty">
+    <h2><span class="n">07</span> Money, attribution, honesty</h2>
+    <p class="sub">
+      The moment decisions come from more than one place, three things quietly become lies unless the
+      design prevents it.
+    </p>
+
+    <table>
+      <thead><tr><th>Problem</th><th>What I would do</th></tr></thead>
+      <tbody>
+        <tr><td>P&amp;L stops meaning anything</td><td>Attribute per strategy: a switch writes a <code>strategy</code> event to the tape with a round number, and P&amp;L is reported since the switch, not since the session.</td></tr>
+        <tr><td>The bill silently changes</td><td><code>snapshot().bill</code> gains a <code>modelCalls</code> / <code>ruleCalls</code> split. A round with two rules costs three calls, not five — that should be visible, not inferred.</td></tr>
+        <tr><td>A run is no longer reproducible</td><td>Rule strategies are deterministic given <code>seed</code>, so replay becomes reproducible for the first time. Model strategies are not, and the UI should say which is which.</td></tr>
+        <tr><td>Nobody remembers which version ran</td><td>Every decision carries <code>{ strategy, version, paramsHash }</code>; the snapshot button already freezes a round to JSON — it now freezes the config too.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <p><b>One thing I would refuse to fake.</b> A paper's algorithm is usually calibrated against real
+      order flow: fill probability as a function of distance, queue position, adverse selection. This
+      simulator has one maker, a book rebuilt with random resting sizes every round, no queue and no
+      latency. So κ can only be <em>assumed</em>, not estimated — which means A–S here is
+      shape-faithful and intensity-approximate.</p>
+      <p>That is fine for the question “does this class of policy behave differently from that one”, and
+      it is not fine for “this is what the paper's author measured”. The design should print that
+      distinction next to the strategy name rather than let a reader assume otherwise.</p>
+    </div>
+  </section>
+
+  <!-- ============================================ 08 -->
+  <section id="rollout">
+    <h2><span class="n">08</span> How I would build it</h2>
+
+    <ol class="steps">
+      <li>
+        <h3>Increment 1 — the registry, rules only</h3>
+        <p>Registry, params, indicator helpers, trader-side rule strategies, the switcher, per-strategy
+          P&amp;L attribution and the bill split. The maker is untouched, so the riskiest surface stays
+          frozen while the seam is proven.</p>
+        <div class="gate">gate — <b>switch mid-run with no restart; attribution adds up; an untouched run is byte-identical</b></div>
+      </li>
+      <li>
+        <h3>Increment 2 — maker strategies</h3>
+        <p><code>mm.band</code>, <code>mm.as</code>, <code>mm.glt</code>, plus the quote panel with the
+          live derivation (r, δ, the two terms). σ estimated from the session's own mid returns, EWMA.</p>
+        <div class="gate">gate — <b>q = 0, κ ≈ 22.6 reproduces today's 8 bp; the ladder and tape render identically under every maker</b></div>
+      </li>
+      <li>
+        <h3>Increment 3 — the comparison harness</h3>
+        <p>One CSV, N strategies, one table: return, vol, delta, tracking error, direction agreement,
+          path ρ. This is the part with research value — the strategies are just the subjects.</p>
+        <div class="gate">gate — <b>the same CSV run twice with rule strategies produces identical numbers</b></div>
+      </li>
+    </ol>
+  </section>
+
+  <!-- ============================================ 09 -->
+  <section id="papers">
+    <h2><span class="n">09</span> What I need from your papers</h2>
+    <p class="sub">
+      Send a paper and I will fill this in. The fields are what the contract needs; anything that has no
+      answer in a paper is a design decision you should make, not something I should invent.
+    </p>
+
+    <table>
+      <thead><tr><th>Field</th><th>Why the engine needs it</th></tr></thead>
+      <tbody>
+        <tr><td>State variables</td><td>Only what the state can supply — otherwise <code>needs</code> gains a field and <code>freshMarket()</code> must start tracking it.</td></tr>
+        <tr><td>Parameters + ranges</td><td>Becomes <code>params: [min, max, default]</code> and the UI sliders. A parameter with no range cannot be swept.</td></tr>
+        <tr><td>Output</td><td>An <code>intent</code> scalar, or a quote <code>{ mult, skew }</code>. Anything else needs a new seam and a longer conversation.</td></tr>
+        <tr><td>Estimators</td><td>How σ, κ, λ or a fill probability are measured. In this simulator they come from the tape or they are assumed — say which.</td></tr>
+        <tr><td>Assumptions that break here</td><td>Queue priority, partial fills, latency, competition. Marking these keeps the fidelity column honest.</td></tr>
+      </tbody>
+    </table>
+
+    <p class="cap">
+      Fidelity, up front, so nothing gets oversold: <b>A–S and GLT</b> — shape faithful, intensity
+      approximate. <b>Ho–Stoll skew</b> — already the current behaviour, faithful. <b>Almgren–Chriss</b>
+      — faithful in replay, where a real cost model exists. <b>OFI / queue-sensitive models</b> — low
+      fidelity; the book here is texture, not a record of who wants to trade. I would label those
+      “experiment only” in the UI rather than let the name imply more than the harness can carry.
+    </p>
+  </section>
+
+  <div class="callout" style="margin-top:56px">
+    <p><b>What I need from you to start:</b> yes to the seam in §01, a decision on whether switching is
+      allowed mid-run or only at reset (§07), and the first paper. Everything else in this document is
+      reversible; those three are not.</p>
+  </div>
+
+  <footer>
+    CORPORATION 001 &nbsp;·&nbsp; strategy design proposal &nbsp;·&nbsp; nothing here is implemented yet<br>
+    <b>§01 and §04 reference market.mjs:97, :336, :351, :357 — the seams the design relies on</b>
+  </footer>
+
+</main>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const s = 100;                       // mid, for the illustration
+  const baseHalf = () => s * 8 / 10000 * 0.5;   // today's 4 bp half = 0.04
+
+  function render() {
+    const g = +$('k-g').value, k = +$('k-k').value;
+    const sigma = +$('k-s').value / 10000;        // slider is basis points per round
+    const T = +$('k-h').value, q = +$('k-q').value;
+
+    const v = g * sigma * sigma * T;              // price units
+    const r = s - q * v;
+    const half = v / 2 + Math.log(1 + g / k) / g;
+    const bid = r - half, ask = r + half;
+
+    const bp = (x) => (x / s * 10000);
+    $('v-g').textContent = g.toFixed(1);
+    $('v-k').textContent = k.toFixed(1);
+    $('v-s').textContent = (sigma * 100).toFixed(2) + '%';
+    $('v-h').textContent = T;
+    $('v-q').textContent = (q > 0 ? '+' : '') + q;
+
+    $('o-ask').textContent = ask.toFixed(3);
+    $('o-bid').textContent = bid.toFixed(3);
+    $('o-r').textContent = r.toFixed(3);
+    $('o-half').textContent = bp(half).toFixed(1) + ' bp';
+    $('o-tot').textContent = bp(half * 2).toFixed(1) + ' bp';
+    $('o-skew').textContent = ((r - s) * 100).toFixed(2) + '¢';
+    $('o-q').textContent = (q > 0 ? '+' : '') + q + ' / ±2 000';
+
+    const w = Math.min(50, Math.abs(q) / 2000 * 50);
+    const bar = $('o-inv');
+    bar.style.width = w + '%';
+    bar.style.left = q >= 0 ? '50%' : (50 - w) + '%';
+  }
+
+  ['k-g','k-k','k-s','k-h','k-q'].forEach((id) => $(id).addEventListener('input', render));
+  render();
+
+  // the maker select relabels the panel
+  document.querySelectorAll('select').forEach((sel) => {
+    sel.addEventListener('change', () => {
+      if (sel.getAttribute('aria-label') === 'Aurelia strategy') {
+        $('mq').textContent = sel.options[sel.selectedIndex].text;
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

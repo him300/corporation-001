@@ -1,0 +1,25 @@
+{
+  "name": "corporation-001",
+  "version": "1.0.0",
+  "description": "A microstructure market simulator where every participant is a TypeSafe Jev answering one atomic probability question per round.",
+  "type": "module",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "manual": "node md2html.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "market-microstructure",
+    "simulation",
+    "order-book",
+    "typesafe",
+    "jev",
+    "system-one",
+    "calibration",
+    "agents"
+  ],
+  "license": "MIT"
+}

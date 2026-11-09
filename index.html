@@ -1,0 +1,1036 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Corporation 001</title>
+<script>
+  // Applied before first paint so there is no flash of the wrong theme.
+  try {
+    const saved = localStorage.getItem('corp001-theme');
+    const sys = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    document.documentElement.dataset.theme = saved || sys;
+  } catch { document.documentElement.dataset.theme = 'dark'; }
+</script>
+<style>
+  :root, :root[data-theme="dark"]{
+    --bg:#0b0c0e; --panel:#111316; --panel-2:#0e1013; --line:#1e2226; --line-2:#2a2f35;
+    --ink:#e9e7e2; --dim:#7e858c; --faint:#525a61;
+    --hair:#14171a; --track:#191d21; --scroll:#23282e; --code-bg:#0c0e10;
+    --buy:#4fb286; --sell:#d4635a; --amber:#d9a441; --blue:#5f8fbf;
+    --ask-ink:#c08a84; --bid-ink:#7fb59c;
+    --band:.05; --mid-ink:#e9e7e2; --seg-on:#1b1f24; --depth:.16;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+    --ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  }
+  :root[data-theme="medium"]{
+    --bg:#23262a; --panel:#2a2e33; --panel-2:#1f2226; --line:#34383e; --line-2:#43484f;
+    --ink:#eae6de; --dim:#a9a59c; --faint:#78746c;
+    --hair:#2d3135; --track:#31353a; --scroll:#3c4147; --code-bg:#1c1f23;
+    --buy:#6cc194; --sell:#e0746b; --amber:#e0b054; --blue:#7aa3cc;
+    --ask-ink:#d99a94; --bid-ink:#8fc4a8;
+    --band:.07; --mid-ink:#f2eee6; --seg-on:#3b4046; --depth:.20;
+  }
+  :root[data-theme="light"]{
+    --bg:#faf8f4; --panel:#ffffff; --panel-2:#f3efe7; --line:#e4dfd3; --line-2:#d3ccbc;
+    --ink:#16150f; --dim:#6a655a; --faint:#9a9486;
+    --hair:#efeadf; --track:#eae4d7; --scroll:#d9d3c5; --code-bg:#f5f1e8;
+    --buy:#3d7d5c; --sell:#b4433c; --amber:#a9761f; --blue:#4a6f96;
+    --ask-ink:#a8574f; --bid-ink:#3d7d5c;
+    --band:.11; --mid-ink:#16150f; --seg-on:#ffffff; --depth:.13;
+  }
+  *{box-sizing:border-box}
+  html{height:100%}
+  body{
+    margin:0;min-height:100%;background:var(--bg);color:var(--ink);font:14px/1.45 var(--ui);
+    -webkit-font-smoothing:antialiased;display:flex;flex-direction:column;
+    overflow-x:hidden;overflow-y:auto;
+    transition:background .18s ease, color .18s ease;
+  }
+  body::-webkit-scrollbar{width:9px}
+  body::-webkit-scrollbar-track{background:var(--bg)}
+  body::-webkit-scrollbar-thumb{background:var(--scroll);border-radius:5px}
+  button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+  /* ---------------- header ---------------- */
+  header{
+    display:flex;align-items:center;gap:22px;padding:14px 22px;border-bottom:1px solid var(--line);
+    flex:0 0 auto;background:var(--panel-2);
+    position:sticky;top:0;z-index:20;flex-wrap:wrap;row-gap:10px;
+  }
+  .ident{display:flex;flex-direction:column;gap:2px;min-width:190px}
+  .ident .sym{font:600 13px/1 var(--ui);letter-spacing:.14em;color:var(--dim)}
+  .ident .nm{font:600 15px/1.2 var(--ui);letter-spacing:.01em}
+  .price{display:flex;align-items:baseline;gap:10px}
+  .price .p{font:500 30px/1 var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .price .c{font:12px/1 var(--mono);color:var(--dim)}
+  .price .c.up{color:var(--buy)} .price .c.dn{color:var(--sell)}
+  .chips{display:flex;gap:18px;margin-left:auto;align-items:center}
+  .chip{display:flex;flex-direction:column;gap:3px}
+  .chip .k{font:9.5px/1 var(--mono);letter-spacing:.1em;color:var(--faint);text-transform:uppercase}
+  .chip .v{font:12.5px/1 var(--mono);color:var(--ink);font-variant-numeric:tabular-nums}
+  .ctrl{display:flex;align-items:center;gap:8px;padding-left:20px;border-left:1px solid var(--line);flex-wrap:wrap;row-gap:8px}
+  .seg.compact button{padding:7px 9px;font-size:12.5px;line-height:1}
+  .billchip .v{color:var(--amber)}
+  .flashable.flash{animation:billflash .9s ease}
+  @keyframes billflash{
+    0%{background:rgba(217,164,65,.20)}
+    0%{background:color-mix(in srgb, var(--amber) 24%, transparent)}
+    100%{background:transparent}
+  }
+  .billline{margin-top:5px;color:var(--faint);border-radius:4px;padding:1px 3px;margin-left:-3px}
+  .billline .c{color:var(--amber)}
+  .btn{
+    border:1px solid var(--line-2);border-radius:7px;padding:7px 13px;font:500 12.5px/1 var(--ui);
+    color:var(--dim);transition:.15s;
+  }
+  .btn:hover{color:var(--ink);border-color:var(--faint)}
+  .btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  .btn.primary:hover{opacity:.88;color:var(--bg)}
+  .seg{display:flex;border:1px solid var(--line-2);border-radius:7px;overflow:hidden}
+  .seg button{padding:7px 12px;font:12px/1 var(--ui);color:var(--faint)}
+  .seg button.on{background:var(--seg-on);color:var(--ink)}
+  .live{display:flex;align-items:center;gap:6px;font:10px/1 var(--mono);letter-spacing:.1em;color:var(--faint)}
+  .dotlive{width:6px;height:6px;border-radius:50%;background:var(--faint)}
+  .dotlive.on{background:var(--buy);box-shadow:0 0 0 0 rgba(79,178,134,.6);animation:pulse 1.8s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(79,178,134,.45)}70%{box-shadow:0 0 0 7px rgba(79,178,134,0)}100%{box-shadow:0 0 0 0 rgba(79,178,134,0)}}
+
+  /* ---------------- layout ---------------- */
+  main{
+    flex:1 1 auto;display:grid;grid-template-columns:minmax(0,1fr) 292px;
+    grid-template-rows:minmax(0,1fr) auto;min-height:0;
+  }
+  .col{display:flex;flex-direction:column;min-height:0;min-width:0}
+  .pane{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+  .pane:last-child{border-right:0}
+  .cap{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:9px 16px;border-bottom:1px solid var(--line);
+    font:9.5px/1 var(--mono);letter-spacing:.13em;color:var(--faint);text-transform:uppercase;flex:0 0 auto;
+  }
+  .cap .r{color:var(--dim);letter-spacing:.06em;text-transform:none}
+  .cap .r{display:flex;align-items:center;gap:10px}
+  .cap .seg button{padding:5px 8px;font:10px/1 var(--mono);letter-spacing:.06em}
+
+  /* chart */
+  /* Exactly fills the viewport on tall screens (62 header + 33 cap + 186 tape + 109 strip
+     = 390px of chrome), and falls back to a 300px floor on short ones, where the page scrolls. */
+  #chartWrap{flex:0 0 auto;position:relative;height:max(300px, calc(100dvh - var(--chrome, 390px)));padding:10px 8px 4px}
+  #chart{display:block;width:100%;height:100%}
+  .empty-hint{
+    position:absolute;inset:0;display:grid;place-content:center;text-align:center;color:var(--faint);
+    font-size:13px;pointer-events:none;
+  }
+
+  /* tape + news */
+  .bottom{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line);flex:0 0 auto;height:186px}
+  .bottom > div{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+  .bottom > div:first-child{border-right:1px solid var(--line)}
+  .scroll{overflow:auto;flex:1 1 auto}
+  .scroll::-webkit-scrollbar{width:6px}
+  .scroll::-webkit-scrollbar-thumb{background:var(--scroll);border-radius:3px}
+
+  .trade{display:grid;grid-template-columns:50px minmax(0,1fr) 62px 62px;gap:8px;padding:4px 14px;font:11.5px/1.5 var(--mono);
+         font-variant-numeric:tabular-nums;color:var(--dim);border-bottom:1px solid var(--hair);white-space:nowrap}
+  .trade .nm{overflow:hidden;text-overflow:ellipsis}
+  .trade b{font-weight:500}
+  .trade .b{color:var(--buy)} .trade .s{color:var(--sell)}
+  .trade .nm{color:var(--ink)}
+  .trade .px{text-align:right;color:var(--ink)}
+
+  .newsitem{padding:7px 14px;border-bottom:1px solid var(--hair);font-size:12px;color:var(--dim);line-height:1.45}
+  .newsitem .r{font:10px/1 var(--mono);color:var(--faint);margin-right:7px}
+  .none{padding:14px;color:var(--faint);font-size:12px}
+
+  /* book */
+  .ladder{display:flex;flex-direction:column;padding:6px 0;overflow-y:auto;flex:1 1 auto;min-height:0}
+  /* the book pane is pinned to the height the market column sets, so a 100-row
+     ladder scrolls inside it instead of stretching the page */
+  .book-col .pane{position:relative}
+  .book-col .ladder{position:absolute;top:34px;left:0;right:0;bottom:0}
+  .ladder::-webkit-scrollbar{width:6px}
+  .ladder::-webkit-scrollbar-thumb{background:var(--scroll);border-radius:3px}
+  #depthSel{
+    background:transparent;border:1px solid var(--line-2);border-radius:6px;color:var(--dim);
+    font:10px/1 var(--mono);padding:4px 6px;cursor:pointer;
+  }
+  #depthSel:hover{color:var(--ink);border-color:var(--faint)}
+  .lvl{position:relative;display:grid;grid-template-columns:1fr 66px;gap:6px;padding:3.5px 14px;
+       font:11.5px/1.6 var(--mono);font-variant-numeric:tabular-nums}
+  .lvl .d{position:absolute;top:1px;bottom:1px;right:0;border-radius:2px 0 0 2px;opacity:var(--depth)}
+  .lvl .d.a{background:var(--sell)} .lvl .d.b{background:var(--buy)}
+  .lvl .p{color:var(--dim);position:relative}
+  .lvl.ask .p{color:var(--ask-ink)} .lvl.bid .p{color:var(--bid-ink)}
+  .lvl .s{text-align:right;color:var(--faint);position:relative}
+  .mid{
+    display:flex;justify-content:space-between;align-items:center;gap:8px;
+    margin:5px 14px;padding:7px 0;border-top:1px solid var(--line-2);border-bottom:1px solid var(--line-2);
+    font:12px/1 var(--mono);font-variant-numeric:tabular-nums;
+  }
+  .mid .v{color:var(--ink)}
+  .mid .sp{color:var(--faint);font-size:10.5px}
+
+  /* agent strip */
+  .strip{flex:0 0 auto;border-top:1px solid var(--line);background:var(--panel-2);display:grid;
+         grid-template-columns:repeat(5,minmax(0,1fr));grid-column:1 / -1}
+  .ag{padding:10px 14px 11px;border-right:1px solid var(--line);min-width:0}
+  .ag:last-child{border-right:0}
+  .ag .h{display:flex;align-items:center;justify-content:space-between;gap:6px}
+  .ag .n{font:600 12.5px/1.2 var(--ui)}
+  .ag .rt{font:9.5px/1 var(--mono);letter-spacing:.08em;color:var(--faint);text-transform:uppercase;margin-top:2px}
+  .act{font:600 9.5px/1 var(--mono);letter-spacing:.09em;padding:3px 6px;border-radius:4px;text-transform:uppercase}
+  .act.buy{background:rgba(79,178,134,.14);color:var(--buy)}
+  .act.sell{background:rgba(212,99,90,.14);color:var(--sell)}
+  .act.hold{background:rgba(126,133,140,.12);color:var(--dim)}
+  .act.tighten{background:rgba(217,164,65,.14);color:var(--amber)}
+  .act.widen{background:rgba(95,143,191,.15);color:var(--blue)}
+  .pbar{display:flex;height:4px;border-radius:9px;overflow:hidden;margin:9px 0 6px;background:var(--track)}
+  .pbar .b{background:var(--buy)} .pbar .s{background:var(--sell)}
+  .ag .f{display:flex;justify-content:space-between;gap:8px;font:10px/1.35 var(--mono);
+         font-variant-numeric:tabular-nums;color:var(--faint);white-space:nowrap}
+  .ag .f > span{overflow:hidden;text-overflow:ellipsis}
+  .ag .f .pnl.pos{color:var(--buy)} .ag .f .pnl.neg{color:var(--sell)}
+  .ag.dead{opacity:.55}
+
+  /* collective */
+  #collective{display:none;grid-column:1 / -1;overflow:visible;padding:16px 20px}
+  #collective::-webkit-scrollbar{width:8px}
+  #collective::-webkit-scrollbar-thumb{background:var(--scroll);border-radius:4px}
+  body.mode-collective #collective{display:block;grid-row:1}
+  #replay{display:none;grid-column:1/-1;overflow:visible;padding:16px 20px}
+  body.mode-replay #replay{display:block;grid-row:1}
+  body.mode-replay main > .col.market,
+  body.mode-replay main > .col.book-col{display:none}
+  body.mode-replay main{grid-template-columns:minmax(0,1fr)}
+  body.mode-replay .strip{display:none}
+  body.mode-collective main > .col.market,
+  body.mode-collective main > .col.book-col{display:none}
+  body.mode-collective main{grid-template-columns:minmax(0,1fr)}
+  .grid2{display:grid;grid-template-columns:1.15fr .85fr;gap:20px}
+  @media (max-width:900px){ .grid2{grid-template-columns:1fr} main{grid-template-columns:1fr} .book-col{display:none} }
+  .card{border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:16px 18px}
+  .card h3{margin:0 0 12px;font:9.5px/1 var(--mono);letter-spacing:.13em;color:var(--faint);text-transform:uppercase;font-weight:500}
+  .stat{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--hair)}
+  .stat:last-child{border-bottom:0}
+  .stat .k{color:var(--dim);font-size:12.5px}
+  .stat .v{font:12.5px/1 var(--mono);font-variant-numeric:tabular-nums}
+  .bar-row{display:grid;grid-template-columns:84px 1fr 56px;gap:12px;align-items:center;padding:5px 0}
+  .bar-row .nm{font-size:12.5px;color:var(--dim)}
+  .div{position:relative;height:7px;background:var(--track);border-radius:9px;overflow:hidden;display:flex}
+  .div:after{content:'';position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line-2)}
+  .div .l{background:var(--buy);height:100%} .div .r{background:var(--sell);height:100%;margin-left:auto}
+  .bar-row .v{font:11.5px/1 var(--mono);text-align:right;color:var(--faint);font-variant-numeric:tabular-nums}
+  .stack{display:flex;height:9px;border-radius:9px;overflow:hidden;margin:4px 0 12px}
+  .stack .b{background:var(--buy)} .stack .s{background:var(--sell)} .stack .h{background:var(--line-2)}
+  .legend{display:flex;gap:16px;font:10.5px/1 var(--mono);color:var(--faint)}
+  .legend i{display:inline-block;width:7px;height:7px;border-radius:2px;margin-right:5px}
+  .mini{font:11.5px/1.4 var(--ui);color:var(--dim);margin:0 0 8px}
+  .snap{"border:1px dashed var(--line-2);border-radius:10px;padding:14px 16px;margin-top:16px;font:11.5px/1.6 var(--mono);
+        color:var(--dim);max-height:200px;overflow:auto;white-space:pre-wrap;background:var(--code-bg)}
+  .row-btns{display:flex;gap:8px;margin-top:12px}
+  .billcard{grid-column:1/-1;padding:14px 18px}
+  .billsum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin-bottom:12px}
+  .billsum .k{font:9.5px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
+  .billsum .v{font:17.5px/1 var(--mono);font-variant-numeric:tabular-nums;color:var(--amber)}
+  .billsum .s{font:10.5px/1.45 var(--mono);color:var(--faint);margin-top:6px}
+  .billtable{width:100%;border-collapse:collapse;font:11.5px/1.4 var(--mono);font-variant-numeric:tabular-nums}
+  .billtable th{text-align:left;padding:6px 10px 7px 0;border-bottom:1px solid var(--line-2);
+                color:var(--faint);font-weight:500;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase}
+  .billtable td{padding:4px 10px 4px 0;border-bottom:1px solid var(--hair);color:var(--dim)}
+  .billtable td.n{text-align:right}
+  .billtable td.c{text-align:right;color:var(--ink)}
+  .billtable tr:last-child td{border-bottom:0}
+  .share{display:inline-block;height:5px;border-radius:9px;background:var(--amber);opacity:.55;vertical-align:middle}
+  .chipdot{display:inline-block;width:7px;height:7px;border-radius:2px;margin-right:7px;vertical-align:middle}
+  .billtable tr.pending td{color:var(--faint)}
+  .billtable tbody tr[data-k]:not([data-k="0"]){cursor:pointer}
+  .billtable tbody tr[data-k]:not([data-k="0"]):hover td{background:rgba(127,133,140,.07)}
+  .billtable tbody tr.focused td{background:rgba(127,133,140,.10)}
+
+  /* ---------- replay ---------- */
+  .rgrid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start}
+  @media (max-width:1000px){ .rgrid{grid-template-columns:1fr} }
+  .rchart-wrap{position:relative;height:330px}
+  #rchart{display:block;width:100%;height:100%}
+  .rhead{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:10px}
+  .rhead .big{font:500 26px/1 var(--mono);font-variant-numeric:tabular-nums}
+  .rhead .big.up{color:var(--buy)} .rhead .big.dn{color:var(--sell)}
+  .rhead .lbl{font:10px/1 var(--mono);letter-spacing:.1em;color:var(--faint);text-transform:uppercase}
+
+  .frow{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .frow label{font:11px/1.3 var(--mono);color:var(--faint);text-transform:uppercase;letter-spacing:.08em;min-width:86px}
+  .frow input[type=number], .frow select{
+    flex:1;min-width:0;background:var(--bg);border:1px solid var(--line-2);border-radius:7px;
+    color:var(--ink);font:12.5px/1 var(--mono);padding:8px 9px;
+  }
+  .frow input:disabled, .frow select:disabled{opacity:.4}
+  .drop{
+    border:1.5px dashed var(--line-2);border-radius:9px;padding:14px;text-align:center;cursor:pointer;
+    font-size:12.5px;color:var(--dim);transition:.15s;margin-bottom:12px;
+  }
+  .drop:hover{border-color:var(--faint);color:var(--ink)}
+  .drop.on{border-color:var(--amber);color:var(--amber)}
+  .drop b{color:var(--ink);font-weight:600}
+  .prog{height:4px;border-radius:9px;background:var(--track);overflow:hidden;margin:12px 0 8px}
+  .prog i{display:block;height:100%;width:0;background:var(--amber);transition:width .3s}
+  .rmeta{font:11px/1.5 var(--mono);color:var(--faint)}
+  .rbtns{display:flex;gap:8px;margin-top:14px}
+  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:14px 20px;margin-top:4px}
+  .metric .k{font:9.5px/1 var(--mono);letter-spacing:.1em;color:var(--faint);text-transform:uppercase;margin-bottom:6px}
+  .metric .v{font:17px/1 var(--mono);font-variant-numeric:tabular-nums}
+  .metric .v.up{color:var(--buy)} .metric .v.dn{color:var(--sell)}
+  .key{display:inline-block;width:14px;height:0;border-top:2px solid var(--amber);vertical-align:middle;margin-right:5px}
+  .key.act{border-top:2px dashed var(--dim)}
+  .key.sur{border-top:1px solid var(--dim);opacity:.6}
+  .snap::-webkit-scrollbar{width:6px}
+  .snap::-webkit-scrollbar-thumb{background:var(--scroll);border-radius:3px}
+
+  /* ---------- phones ---------- */
+  @media (max-width:760px){
+    header{padding:8px 10px;gap:8px 10px}
+    #speedseg, #step{display:none}
+    .live span:last-child{display:none}
+    .ident{min-width:0}
+    .ident .sym{font-size:10.5px}
+    .ident .nm{font-size:13px}
+    .price .p{font-size:23px}
+    .chips{width:100%;margin-left:0;gap:13px;overflow-x:auto;padding-bottom:2px}
+    .chip .k{font-size:8.5px}
+    .chip .v{font-size:11.5px}
+    .ctrl{padding-left:0;border-left:0;width:100%;gap:6px}
+    .btn{padding:6px 11px;font-size:12px}
+    .seg button{padding:6px 8px;font-size:11.5px}
+    main{grid-template-columns:minmax(0,1fr)}
+    .book-col{display:none}
+    #chartWrap{height:max(210px, 46dvh)}
+    .bottom{grid-template-columns:1fr;height:auto}
+    .bottom > div{max-height:148px}
+    .strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+    #collective, #replay{padding:12px}
+    .grid2, .rgrid{grid-template-columns:1fr}
+    .rchart-wrap{height:230px}
+    .billsum{grid-template-columns:1fr 1fr;gap:12px}
+    .billtable{font-size:10.5px}
+    .rhead .big{font-size:21px}
+    .metrics{grid-template-columns:1fr 1fr}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="ident">
+    <div class="sym mono">CORP <span style="color:var(--faint)">001</span></div>
+    <div class="nm">Corporation 001</div>
+  </div>
+
+  <div class="price">
+    <span class="p mono" id="price">100.00</span>
+    <span class="c mono" id="chg">0.00%</span>
+  </div>
+
+  <div class="chips">
+    <div class="chip"><span class="k">spread</span><span class="v" id="spread">—</span></div>
+    <div class="chip"><span class="k">round</span><span class="v" id="round">0</span></div>
+    <div class="chip"><span class="k">volume</span><span class="v" id="vol">0</span></div>
+    <div class="chip"><span class="k">latency</span><span class="v" id="lat">—</span></div>
+    <div class="chip billchip flashable" id="billchip">
+      <span class="k">bill</span><span class="v" id="bill">—</span>
+    </div>
+  </div>
+
+  <div class="ctrl">
+    <span class="live"><span class="dotlive" id="dot"></span><span id="livetxt">IDLE</span></span>
+    <div class="seg compact" id="themeseg" title="theme">
+      <button data-theme="light" aria-label="light theme" title="light">☀</button>
+      <button data-theme="medium" aria-label="medium theme" title="medium">◐</button>
+      <button data-theme="dark" aria-label="dark theme" title="dark">☾</button>
+    </div>
+    <div class="seg" id="viewseg">
+      <button data-view="market" class="on">market</button>
+      <button data-view="collective">collective</button>
+      <button data-view="replay">replay</button>
+    </div>
+    <div class="seg" id="speedseg">
+      <button data-speed="slow">slow</button>
+      <button data-speed="normal" class="on">1×</button>
+      <button data-speed="turbo">fast</button>
+    </div>
+    <button class="btn" id="step" title="one round (S)">step</button>
+    <button class="btn primary" id="run" title="space">run</button>
+    <button class="btn" id="reset" title="R">reset</button>
+  </div>
+</header>
+
+<main>
+  <div class="col market">
+    <div class="pane" style="flex:1 1 auto">
+      <div class="cap"><span>price · mid / fair</span><span class="r"><span id="chartnote">—</span><span class="seg" id="rangeseg"><button data-range="window" class="on" title="the last 180 rounds">180</button><button data-range="session" title="the whole session">all</button></span></span></div>
+      <div id="chartWrap">
+        <canvas id="chart"></canvas>
+        <div class="empty-hint" id="hint">press run — each round every Jev answers one question</div>
+      </div>
+      <div class="bottom">
+        <div>
+          <div class="cap"><span>tape</span><span class="r" id="tapecount">0 fills</span></div>
+          <div class="scroll" id="tape"><div class="none">no trades yet</div></div>
+        </div>
+        <div>
+          <div class="cap"><span>headlines</span></div>
+          <div class="scroll" id="news"><div class="none">quiet</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col book-col">
+    <div class="pane" style="flex:1 1 auto">
+      <div class="cap">
+        <span>order book</span>
+        <span class="r" style="display:flex;gap:8px;align-items:center">
+          <select id="depthSel" title="how many price levels to show">
+            <option value="10">10 levels</option>
+            <option value="20">20 levels</option>
+            <option value="50">50 levels</option>
+            <option value="100">100 levels</option>
+          </select>
+        </span>
+      </div>
+      <div class="ladder" id="ladder"></div>
+    </div>
+  </div>
+
+  <section id="collective">
+    <div class="grid2">
+      <div class="card">
+        <h3>collective read · round <span id="cRound">0</span></h3>
+        <div class="mini">decision split this round</div>
+        <div class="stack" id="stackBuy"></div>
+        <div class="legend">
+          <span><i style="background:var(--buy)"></i><span id="nBuy">0</span> buying</span>
+          <span><i style="background:var(--sell)"></i><span id="nSell">0</span> selling</span>
+          <span><i style="background:var(--line-2)"></i><span id="nHold">0</span> flat</span>
+        </div>
+
+        <h3 style="margin-top:22px">signed intent, per Jev</h3>
+        <div id="intents"></div>
+
+        <div class="stat" style="margin-top:14px"><span class="k">net flow (shares)</span><span class="v" id="netflow">0</span></div>
+        <div class="stat"><span class="k">consensus</span><span class="v" id="consensus">0.00</span></div>
+        <div class="stat"><span class="k">market maker inventory</span><span class="v" id="mminv">—</span></div>
+        <div class="stat"><span class="k">quoted width</span><span class="v" id="mmwidth">—</span></div>
+      </div>
+
+      <div class="card">
+        <h3>ledger</h3>
+        <div id="ledger"></div>
+        <h3 style="margin-top:20px">snapshot</h3>
+        <div class="row-btns">
+          <button class="btn" id="snap">take snapshot</button>
+          <button class="btn" id="copySnap">copy json</button>
+        </div>
+        <div class="snap" id="snapOut">no snapshot yet — the market keeps running while you look.</div>
+      </div>
+
+      <div class="card billcard">
+        <h3>TypeSafe bill · what the market has cost</h3>
+        <div class="billsum">
+          <div>
+            <div class="k">this round</div>
+            <div class="v" id="billRoundCost">—</div>
+            <div class="s" id="billRoundMeta">—</div>
+          </div>
+          <div>
+            <div class="k">session</div>
+            <div class="v" id="billTotalCost">—</div>
+            <div class="s" id="billTotalMeta">—</div>
+          </div>
+          <div>
+            <div class="k">rate</div>
+            <div class="v" id="billRate">—</div>
+            <div class="s">per million input tokens · output tokens are free</div>
+          </div>
+        </div>
+        <table class="billtable" id="billTable"></table>
+      </div>
+    </div>
+  </section>
+
+  <section id="replay">
+    <div class="rgrid">
+      <div class="card">
+        <h3>price path · actual vs jev</h3>
+        <div class="rhead">
+          <div>
+            <div class="lbl">delta</div>
+            <div class="big" id="rDelta">—</div>
+          </div>
+          <div>
+            <div class="lbl">jev path</div>
+            <div class="big" id="rJev" style="font-size:18px">—</div>
+          </div>
+          <div>
+            <div class="lbl">actual</div>
+            <div class="big" id="rActual" style="font-size:18px">—</div>
+          </div>
+          <div style="margin-left:auto;display:flex;gap:14px;align-items:center">
+            <span class="rmeta"><span class="key jev"></span>jev</span>
+            <span class="rmeta"><span class="key act"></span>actual</span>
+            <span class="rmeta" id="rSurrLegend" hidden><span class="key sur"></span>surrogates</span>
+            <span class="lbl" id="rPhase">idle</span>
+          </div>
+        </div>
+        <div class="rchart-wrap"><canvas id="rchart"></canvas></div>
+      </div>
+
+      <div class="card">
+        <h3>run</h3>
+        <div class="seg compact" id="rSource" style="width:100%;margin-bottom:12px">
+          <button data-source="synth" class="on" style="flex:1">fictional</button>
+          <button data-source="csv" style="flex:1">csv</button>
+        </div>
+
+        <div class="drop" id="rDrop" hidden>drop a CSV · DateTime,open,high,low,close[,volume]</div>
+        <input type="file" id="rFile" accept=".csv,text/csv" hidden>
+
+        <div class="frow"><label>bars</label><input type="number" id="rBars" value="36" min="6" max="400"></div>
+        <div class="frow"><label>surrogates</label><input type="number" id="rSurr" value="3" min="0" max="8" disabled></div>
+        <div class="frow"><label>method</label>
+          <select id="rMethod" disabled>
+            <option value="aaft">aaft</option>
+            <option value="iaaft">iaaft</option>
+            <option value="ft">fourier</option>
+            <option value="block">block</option>
+            <option value="shuffle">shuffle</option>
+          </select>
+        </div>
+        <div class="frow"><label>seed</label><input type="number" id="rSeed" value="7" min="1"></div>
+        <div class="frow"><label>cost bps</label><input type="number" id="rCost" value="6" min="0" max="100"></div>
+
+        <div class="prog"><i id="rBar"></i></div>
+        <div class="rmeta" id="rMeta">ready</div>
+
+        <div class="rbtns">
+          <button class="btn primary" id="rRun">run</button>
+          <button class="btn" id="rCancel" disabled>cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h3>readout</h3>
+      <div class="metrics" id="rMetrics">
+        <div class="metric"><div class="k">delta</div><div class="v">—</div></div>
+      </div>
+    </div>
+
+    <div class="card" id="rSurrCard" style="margin-top:18px" hidden>
+      <h3>surrogate study</h3>
+      <div id="rSurrTable"></div>
+      <div class="rmeta" id="rSurrNote" style="margin-top:10px"></div>
+    </div>
+  </section>
+
+  <div class="strip" id="strip"></div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (n, d = 2) => Number(n).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
+const money = (n) => {
+  if (!Number.isFinite(n)) return '—';
+  if (n === 0) return '$0.00';
+  const abs = Math.abs(n);
+  const dp = abs < 0.001 ? 7 : abs < 1 ? 5 : 2;
+  return '$' + n.toFixed(dp).replace(/(\.\d\d\d*?)0+$/, '$1').replace(/\.$/, '');
+};
+const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const tint = (hex, a) => {
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+  const v = parseInt(full, 16);
+  return `rgba(${(v >> 16) & 255},${(v >> 8) & 255},${v & 255},${a})`;
+};
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+let S = null;
+let mode = 'market';
+let thinking = false;
+let lastSnap = null;
+
+// Optional shared secret. Open the page as /?token=... once and it is remembered
+// for the session; the server only enforces it when ACCESS_TOKEN is set.
+const TOKEN = new URLSearchParams(location.search).get('token') || sessionStorage.getItem('access_token') || '';
+if (TOKEN) sessionStorage.setItem('access_token', TOKEN);
+const authHeaders = (extra = {}) => (TOKEN ? { 'x-access-token': TOKEN, ...extra } : extra);
+
+/* ------------------------------------------------------------------ stream */
+
+const es = new EventSource('/api/stream' + (TOKEN ? '?token=' + encodeURIComponent(TOKEN) : ''));
+es.addEventListener('round', (e) => { S = JSON.parse(e.data); thinking = false; syncSession(); render(); });
+es.addEventListener('control', (e) => { const c = JSON.parse(e.data); if (S) { S.running = c.running; S.speed = c.speed; } renderControls(); });
+es.addEventListener('thinking', () => { thinking = true; renderControls(); });
+es.addEventListener('error', (e) => { try { console.warn(JSON.parse(e.data).message); } catch {} });
+
+/* ---------------------------------------------------------------- controls */
+
+async function cmd(name, extra = {}) {
+  await fetch('/api/control', {
+    method: 'POST',
+    headers: authHeaders({ 'content-type': 'application/json' }),
+    body: JSON.stringify({ cmd: name, ...extra }),
+  });
+}
+$('run').onclick = () => cmd(S?.running ? 'pause' : 'start');
+$('step').onclick = () => cmd('step');
+$('reset').onclick = () => { lastSnap = null; $('snapOut').textContent = 'no snapshot yet — the market keeps running while you look.'; cmd('reset'); };
+const THEME_KEY = 'corp001-theme';
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  try { localStorage.setItem(THEME_KEY, theme); } catch {}
+  [...$('themeseg').children].forEach((b) => b.classList.toggle('on', b.dataset.theme === theme));
+  if (mode === 'market') drawChart();
+}
+$('themeseg').onclick = (e) => {
+  const b = e.target.closest('button');
+  if (b) applyTheme(b.dataset.theme);
+};
+[...$('themeseg').children].forEach((b) =>
+  b.classList.toggle('on', b.dataset.theme === (document.documentElement.dataset.theme || 'dark')));
+
+$('depthSel').onchange = (e) => cmd('depth', { value: Number(e.target.value) });
+
+$('viewseg').onclick = (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  mode = b.dataset.view;
+  [...$('viewseg').children].forEach((x) => x.classList.toggle('on', x === b));
+  document.body.classList.toggle('mode-collective', mode === 'collective');
+  document.body.classList.toggle('mode-replay', mode === 'replay');
+  if (typeof fitChrome === 'function') fitChrome();
+  if (mode === 'market') drawChart();
+  else if (mode === 'collective') renderCollective();
+  else drawReplayChart();
+};
+$('speedseg').onclick = (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  [...$('speedseg').children].forEach((x) => x.classList.toggle('on', x === b));
+  cmd('speed', { value: b.dataset.speed });
+};
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.code === 'Space') { e.preventDefault(); cmd(S?.running ? 'pause' : 'start'); }
+  if (e.key === 's' || e.key === 'S') cmd('step');
+  if (e.key === 'r' || e.key === 'R') cmd('reset');
+});
+
+/* ------------------------------------------------------------------- render */
+
+let lastBillRound = -1;
+function flashBills() {
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.flashable').forEach((el) => {
+      el.classList.remove('flash');
+      void el.offsetWidth;   // restart the animation
+      el.classList.add('flash');
+    });
+  });
+}
+
+function render() {
+  if (!S) return;
+  renderHeader();
+  renderStrip();
+  renderTape();
+  renderNews();
+  renderLadder();
+  if (mode === 'market') drawChart(); else renderCollective();
+  renderControls();
+  if (S.round !== lastBillRound) { lastBillRound = S.round; flashBills(); }
+}
+
+function renderControls() {
+  const live = S?.running;
+  $('run').textContent = live ? 'pause' : 'run';
+  $('dot').classList.toggle('on', !!live);
+  $('livetxt').textContent = thinking ? 'JEVS THINKING' : live ? 'LIVE' : 'IDLE';
+}
+
+function renderHeader() {
+  const h = S.history;
+  const first = S.sessionOpen ?? h[0]?.mid ?? S.mid;
+  const chg = ((S.mid - first) / first) * 100;
+  $('price').textContent = fmt(S.mid);
+  const c = $('chg');
+  c.textContent = `${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%`;
+  c.className = 'c mono ' + (chg > 0.0001 ? 'up' : chg < -0.0001 ? 'dn' : '');
+  $('spread').textContent = `${S.spreadBps.toFixed(1)} bp`;
+  $('round').textContent = S.round;
+  $('vol').textContent = S.stats.volume.toLocaleString();
+  $('lat').textContent = S.lastRoundMs ? `${S.lastRoundMs} ms` : '—';
+  $('bill').textContent = money(S.bill?.total?.cost ?? 0);
+  $('bill').title = `${S.bill?.total?.tokens?.toLocaleString() ?? 0} tokens over ${S.bill?.total?.rounds ?? 0} rounds`;
+  $('tapecount').textContent = `${S.tape.length} fills`;
+  const sel = $('depthSel');
+  if (sel && document.activeElement !== sel) sel.value = String(S.levels || 10);
+  $('chartnote').textContent = `fair ${fmt(S.fair)}`;
+}
+
+function renderStrip() {
+  $('strip').innerHTML = S.agents.map((a) => {
+    const L = a.last;
+    const act = L?.action || 'hold';
+    const cls = act;
+    let bar = '';
+    if (a.kind === 'quote') {
+      const t = L?.probs?.tighten ?? 0, w = L?.probs?.widen ?? 0;
+      bar = `<div class="pbar"><span class="b" style="width:${(t * 100).toFixed(1)}%"></span><span class="s" style="width:${(w * 100).toFixed(1)}%"></span></div>`;
+    } else {
+      const b = L?.probs?.buy ?? 0, s = L?.probs?.sell ?? 0;
+      bar = `<div class="pbar"><span class="b" style="width:${(b * 100).toFixed(1)}%"></span><span class="s" style="width:${(s * 100).toFixed(1)}%"></span></div>`;
+    }
+    const pnlCls = a.pnl > 0.01 ? 'pos' : a.pnl < -0.01 ? 'neg' : '';
+    const order = a.kind === 'quote'
+      ? (L?.width_mult ? 'spread ' + L.width_mult.toFixed(2) + '×' : 'spread —')
+      : (L?.size ? act + ' ' + L.size + ' shares' : 'no order');
+    const conf = L?.confidence != null ? 'confidence ' + L.confidence.toFixed(2) : '';
+    return `<div class="ag ${L?.error ? 'dead' : ''}">
+      <div class="h"><span class="n">${esc(a.name)}</span><span class="act ${cls}">${act}</span></div>
+      <div class="rt">${esc(a.role)}</div>
+      ${bar}
+      <div class="f"><span>position ${a.position.toLocaleString()} shares</span><span class="pnl ${pnlCls}">P&amp;L ${a.pnl >= 0 ? '+' : ''}${fmt(a.pnl)}</span></div>
+      <div class="f" style="margin-top:3px"><span>${esc(order)}</span><span>${esc(conf)}</span></div>
+      <div class="f billline flashable"><span class="bill">${L?.bill ? L.bill.tokens.toLocaleString() + ' tokens' : '—'}</span><span class="c bill">${L?.bill ? money(L.bill.cost) : '—'}</span></div>
+    </div>`;
+  }).join('');
+}
+
+function renderTape() {
+  const rows = [...S.tape].reverse().slice(0, 40);
+  if (!rows.length) { $('tape').innerHTML = '<div class="none">no trades yet</div>'; return; }
+  $('tape').innerHTML = rows.map((t) => `
+    <div class="trade">
+      <span>${t.time}</span>
+      <span class="nm">${esc(t.agent)}</span>
+      <span class="${t.side === 'buy' ? 'b' : 's'}">${t.side === 'buy' ? 'BUY' : 'SELL'} ${t.size}</span>
+      <span class="px">${fmt(t.price)}</span>
+    </div>`).join('');
+}
+
+function renderNews() {
+  const rows = [...S.news].reverse();
+  if (!rows.length) { $('news').innerHTML = '<div class="none">quiet — no headlines yet</div>'; return; }
+  $('news').innerHTML = rows.map((n) => `<div class="newsitem"><span class="r">R${n.round}</span>${esc(n.text)}</div>`).join('');
+}
+
+function renderLadder() {
+  const max = Math.max(...S.book.asks.map((l) => l.size), ...S.book.bids.map((l) => l.size), 1);
+  const asks = [...S.book.asks].reverse().map((l) => `
+    <div class="lvl ask"><span class="d a" style="width:${(l.size / max * 100).toFixed(1)}%"></span>
+      <span class="p">${fmt(l.price)}</span><span class="s">${l.size}</span></div>`).join('');
+  const bids = S.book.bids.map((l) => `
+    <div class="lvl bid"><span class="d b" style="width:${(l.size / max * 100).toFixed(1)}%"></span>
+      <span class="p">${fmt(l.price)}</span><span class="s">${l.size}</span></div>`).join('');
+  $('ladder').innerHTML = `${asks}
+    <div class="mid"><span class="v">${fmt(S.mid)}</span><span class="sp">spread ${S.spreadBps.toFixed(1)} bp</span></div>
+    ${bids}`;
+}
+
+/* -------------------------------------------------------------------- chart */
+
+const cv = $('chart');
+const ctx = cv.getContext('2d');
+
+// The chart reads either the live window the stream ships (180 points) or the whole
+// session. The session is one fetch, then one appended point per round, so the
+// per-round payload never grows.
+let range = 'window';
+let sessionPts = [];
+
+async function loadSession() {
+  try {
+    const r = await fetch('/api/history', { headers: authHeaders() });
+    if (!r.ok) throw new Error(`history ${r.status}`);
+    const d = await r.json();
+    sessionPts = (d.points || []).map((p) => ({ r: p.r, m: p.m, f: p.f }));
+  } catch (err) {
+    console.warn('session history unavailable:', err.message);
+    sessionPts = [];
+  }
+  if (mode === 'market') drawChart();
+}
+
+function syncSession() {
+  if (!sessionPts.length || !S) return;
+  const last = sessionPts[sessionPts.length - 1];
+  if (S.round < last.r) {            // reset — the next round starts a new session
+    sessionPts = [];
+    if (range === 'session') loadSession();
+    return;
+  }
+  if (S.round > last.r) sessionPts.push({ r: S.round, m: S.mid, f: S.fair });
+}
+
+$('rangeseg').onclick = (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  range = b.dataset.range;
+  [...$('rangeseg').children].forEach((x) => x.classList.toggle('on', x === b));
+  if (range === 'session' && sessionPts.length < 2) return loadSession();
+  drawChart();
+};
+
+/** 1, 2 or 5 × a power of ten — so x ticks land on round numbers, never 137. */
+function roundStep(raw) {
+  const p = 10 ** Math.floor(Math.log10(Math.max(raw, 1)));
+  const f = raw / p;
+  return Math.max(1, Math.round((f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p));
+}
+
+function drawChart() {
+  if (!S) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth, h = cv.clientHeight;
+  if (!w || !h) return;
+  cv.width = w * dpr; cv.height = h * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  // canvas does not inherit CSS variables — read the active theme once per draw
+  const ink = cssVar('--mid-ink') || cssVar('--ink');
+  const hair = cssVar('--hair');
+  const faint = cssVar('--faint');
+  const amber = cssVar('--amber');
+  const blue = cssVar('--blue');
+  const bandAlpha = parseFloat(cssVar('--band')) || 0.05;
+
+  const hist = S.history;
+  const wide = range === 'session' && sessionPts.length > 1;
+  // one shape for both zooms; bid/ask only exist on the streamed window
+  const pts = wide
+    ? sessionPts
+    : hist.map((p) => ({ r: p.round, m: p.mid, f: p.fair, b: p.bid, a: p.ask }));
+  $('hint').style.display = pts.length > 1 ? 'none' : 'grid';
+  if (pts.length < 2) return;
+
+  const padL = 8, padR = 62, padT = 14, padB = wide ? 26 : 16;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+
+  const vals = pts.flatMap((p) => [p.m, p.f]);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  const span = Math.max(hi - lo, 0.12);
+  lo -= span * 0.15; hi += span * 0.15;
+
+  const n = pts.length;
+  const x = (i) => padL + (i / (n - 1)) * plotW;
+  const y = (v) => padT + (1 - (v - lo) / (hi - lo)) * plotH;
+
+  ctx.strokeStyle = hair; ctx.lineWidth = 1;
+  ctx.font = '10px ui-monospace, monospace'; ctx.fillStyle = faint;
+  for (let i = 0; i <= 4; i++) {
+    const gv = lo + ((hi - lo) * i) / 4;
+    const gy = Math.round(y(gv)) + 0.5;
+    ctx.beginPath(); ctx.moveTo(padL, gy); ctx.lineTo(padL + plotW, gy); ctx.stroke();
+    ctx.fillText(gv.toFixed(2), padL + plotW + 8, gy + 3.5);
+  }
+
+  // round numbers along the bottom, only when the run is on screen — the axis then
+  // answers "where in the session was that?" without adding a vertical grid.
+  if (wide) {
+    const step = roundStep(pts[n - 1].r / 4);
+    for (let r = 0; r <= pts[n - 1].r; r += step) {
+      const i0 = pts.findIndex((p) => p.r >= r);
+      if (i0 < 0) break;
+      const gx = Math.round(x(i0)) + 0.5;
+      ctx.beginPath(); ctx.moveTo(gx, padT + plotH); ctx.lineTo(gx, padT + plotH + 4); ctx.stroke();
+      ctx.fillText(String(r), gx, padT + plotH + 16);
+    }
+  }
+
+  // fair value
+  ctx.beginPath();
+  pts.forEach((p, i) => (i ? ctx.lineTo(x(i), y(p.f)) : ctx.moveTo(x(i), y(p.f))));
+  ctx.strokeStyle = tint(blue, 0.55); ctx.lineWidth = 1; ctx.setLineDash([3, 4]); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // bid/ask envelope — a few pixels thick at window zoom, invisible at session zoom
+  if (!wide) {
+    ctx.beginPath();
+    pts.forEach((p, i) => (i ? ctx.lineTo(x(i), y(p.a)) : ctx.moveTo(x(i), y(p.a))));
+    for (let i = n - 1; i >= 0; i--) ctx.lineTo(x(i), y(pts[i].b));
+    ctx.closePath();
+    ctx.fillStyle = tint(amber, bandAlpha); ctx.fill();
+  }
+
+  // mid
+  const grad = ctx.createLinearGradient(0, padT, 0, padT + plotH);
+  grad.addColorStop(0, tint(ink, 0.16));
+  grad.addColorStop(1, tint(ink, 0));
+  ctx.beginPath();
+  pts.forEach((p, i) => (i ? ctx.lineTo(x(i), y(p.m)) : ctx.moveTo(x(i), y(p.m))));
+  ctx.lineTo(x(n - 1), padT + plotH); ctx.lineTo(x(0), padT + plotH); ctx.closePath();
+  ctx.fillStyle = grad; ctx.fill();
+
+  ctx.beginPath();
+  pts.forEach((p, i) => (i ? ctx.lineTo(x(i), y(p.m)) : ctx.moveTo(x(i), y(p.m))));
+  ctx.strokeStyle = ink; ctx.lineWidth = wide ? 1.2 : 1.6; ctx.lineJoin = 'round'; ctx.stroke();
+
+  // last point
+  const lx = x(n - 1), ly = y(pts[n - 1].m);
+  ctx.beginPath(); ctx.arc(lx, ly, 3, 0, Math.PI * 2); ctx.fillStyle = ink; ctx.fill();
+  ctx.fillStyle = cssVar('--bg'); ctx.beginPath(); ctx.arc(lx, ly, 1.3, 0, Math.PI * 2); ctx.fill();
+}
+
+/**
+ * The market view is sized to fill exactly one viewport: the chart takes whatever is
+ * left after the header, the tape row and the agent strip. Measuring beats guessing,
+ * because the header wraps on narrow windows and the strip grows by a line per agent.
+ */
+function fitChrome() {
+  const h = document.querySelector('header').getBoundingClientRect().height;
+  const strip = $('strip').getBoundingClientRect().height;
+  const bottom = document.querySelector('.bottom').getBoundingClientRect().height || 186;
+  const cap = 33;   // the "price · mid / fair" caption row
+  document.documentElement.style.setProperty('--chrome', Math.round(h + strip + bottom + cap) + 'px');
+}
+
+window.addEventListener('resize', () => { fitChrome(); if (mode === 'market') drawChart(); });
+new ResizeObserver(() => { fitChrome(); if (mode === 'market') drawChart(); }).observe($('chartWrap'));
+new ResizeObserver(() => fitChrome()).observe(document.querySelector('header'));
+fitChrome();
+
+/* --------------------------------------------------------------- collective */
+
+function intentOf(a) {
+  if (a.kind === 'quote') {
+    const p = a.last?.probs || {};
+    return (p.tighten || 0) * 0.35 - (p.widen || 0) * 0.35;
+  }
+  const p = a.last?.probs || {};
+  return (p.buy || 0) - (p.sell || 0);
+}
+
+function renderCollective() {
+  if (!S) return;
+  const traders = S.agents.filter((a) => a.kind === 'trade');
+  const buys = traders.filter((a) => a.last?.action === 'buy').length;
+  const sells = traders.filter((a) => a.last?.action === 'sell').length;
+  const holds = traders.length - buys - sells;
+  const total = Math.max(1, traders.length);
+
+  $('cRound').textContent = S.round;
+  $('stackBuy').innerHTML =
+    `<span class="b" style="width:${(buys / total * 100).toFixed(1)}%"></span>` +
+    `<span class="s" style="width:${(sells / total * 100).toFixed(1)}%"></span>` +
+    `<span class="h" style="width:${(holds / total * 100).toFixed(1)}%"></span>`;
+  $('nBuy').textContent = buys; $('nSell').textContent = sells; $('nHold').textContent = holds;
+
+  const intents = S.agents.map((a) => ({ name: a.name, role: a.role, v: intentOf(a) }));
+  $('intents').innerHTML = intents.map((i) => {
+    const w = Math.min(50, Math.abs(i.v) * 50);
+    const left = i.v >= 0;
+    return `<div class="bar-row">
+      <span class="nm">${esc(i.name)}</span>
+      <span class="div">
+        <span class="${left ? 'l' : 'r'}" style="width:${w.toFixed(1)}%"></span>
+      </span>
+      <span class="v">${i.v >= 0 ? '+' : ''}${i.v.toFixed(2)}</span>
+    </div>`;
+  }).join('');
+
+  const net = S.tape.filter((t) => t.round === S.round)
+    .reduce((s, t) => s + (t.side === 'buy' ? t.size : -t.size), 0);
+  const consensus = intents.reduce((s, i) => s + i.v, 0) / intents.length;
+  const mm = S.agents.find((a) => a.id === 'mm');
+
+  $('netflow').textContent = (net >= 0 ? '+' : '') + net.toLocaleString();
+  $('consensus').textContent = (consensus >= 0 ? '+' : '') + consensus.toFixed(2);
+  $('mminv').textContent = `${mm.position.toLocaleString()} sh`;
+  $('mmwidth').textContent = mm.last?.width_mult ? `${mm.last.width_mult.toFixed(2)}×` : '—';
+
+  renderBill();
+
+  $('ledger').innerHTML = S.agents.map((a) => `
+    <div class="stat">
+      <span class="k">${esc(a.name)} <span style="color:var(--faint);font-size:11px">${esc(a.role)}</span></span>
+      <span class="v" style="color:${a.pnl > 0.01 ? 'var(--buy)' : a.pnl < -0.01 ? 'var(--sell)' : 'var(--dim)'}">
+        ${a.pnl >= 0 ? '+' : ''}${fmt(a.pnl)}
+      </span>
+    </div>`).join('');
+}
+
+function renderBill() {
+  const b = S.bill;
+  if (!b) return;
+
+  $('billRoundCost').textContent = money(b.round.cost);
+  $('billRoundMeta').textContent = `${b.round.calls} calls · ${b.round.tokens.toLocaleString()} tokens`;
+  $('billTotalCost').textContent = money(b.total.cost);
+  $('billTotalMeta').textContent = `${b.total.rounds} rounds · ${b.total.calls} calls · ${b.total.tokens.toLocaleString()} tokens`;
+  $('billRate').textContent = `$${b.pricePerMTok} / Mtok`;
+
+  const rows = S.agents.map((a) => {
+    const acc = b.byAgent[a.id] || { calls: 0, tokens: 0, cost: 0 };
+    const perCall = acc.calls ? acc.cost / acc.calls : 0;
+    const share = b.total.cost > 0 ? (acc.cost / b.total.cost) * 100 : 0;
+    return `<tr>
+      <td>${esc(a.name)}</td>
+      <td class="n">${acc.calls}</td>
+      <td class="n">${acc.tokens.toLocaleString()}</td>
+      <td class="c">${money(perCall)}</td>
+      <td class="c">${money(acc.cost)}</td>
+      <td class="n"><span class="share" style="width:${Math.max(2, share).toFixed(0)}px"></span> ${share.toFixed(1)}%</td>
+    </tr>`;
+  }).join('');
+
+  $('billTable').innerHTML = `
+    <thead><tr>
+      <th>agent</th><th class="n">calls</th><th class="n">tokens</th>
+      <th class="c">per call</th><th class="c">total</th><th class="n">share</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>`;
+}
+
+$('snap').onclick = () => {
+  if (!S) return;
+  const traders = S.agents.filter((a) => a.kind === 'trade');
+  const mm = S.agents.find((a) => a.id === 'mm');
+  lastSnap = {
+    at: new Date().toISOString(),
+    round: S.round,
+    mid: S.mid,
+    fair: S.fair,
+    spread_bp: S.spreadBps,
+    decisions: S.agents.map((a) => ({
+      agent: a.name, role: a.role, action: a.last?.action ?? 'hold',
+      confidence: a.last?.confidence ?? null,
+      probs: a.last?.probs ?? null,
+      intent: Number(intentOf(a).toFixed(3)),
+      position: a.position, pnl: a.pnl,
+    })),
+    bill: {
+      round: S.bill?.round,
+      total: S.bill?.total,
+      price_per_mtok: S.bill?.pricePerMTok,
+    },
+    aggregate: {
+      buys: traders.filter((a) => a.last?.action === 'buy').length,
+      sells: traders.filter((a) => a.last?.action === 'sell').length,
+      flat: traders.filter((a) => a.last?.action !== 'buy' && a.last?.action !== 'sell').length,
+      market_maker_inventory: mm.position,
+      quote_width: mm.last?.width_mult ?? null,
+    },
+  };
+  $('snapOut').textContent = JSON.stringify(lastSnap, null, 2);
+};
+
+$('copySnap').onclick = async () => {
+  const text = lastSnap ? JSON.stringify(lastSnap, null, 2) : $('snapOut').textContent;
+  await navigator.clipboard.writeText(text);
+  $('copySnap').textContent = 'copied';
+  setTimeout(() => ($('copySnap').textContent = 'copy json'), 1200);
+};
+</script>
+<script src="/replay.js"></script>
+</body>
+</html>

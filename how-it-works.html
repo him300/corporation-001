@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Corporation 001 — how it decides</title>
+<style>
+  :root{
+    --bg:#0a0b0d; --panel:#0f1114; --panel-2:#0b0d10;
+    --ink:#e9e7e2; --dim:#858c93; --faint:#565d64;
+    --line:#1d2126; --wire:#2f353c;
+    --amber:#d9a441; --blue:#6f9cc9; --green:#4fb286; --red:#d4635a;
+    --ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#faf8f4; --panel:#ffffff; --panel-2:#f4f0e8;
+      --ink:#16150f; --dim:#6a655a; --faint:#7f7970;
+      --line:#e4dfd3; --wire:#cfc8b8;
+      --amber:#a9761f; --blue:#4a6f96; --green:#3d7d5c; --red:#b4433c;
+    }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;padding:56px 24px 120px;background:var(--bg);color:var(--ink);
+    font:15px/1.55 var(--ui);-webkit-font-smoothing:antialiased;
+  }
+  main{max-width:940px;margin:0 auto}
+
+  /* ---------- head ---------- */
+  .overline{font:500 10px/1 var(--mono);letter-spacing:.24em;text-transform:uppercase;color:var(--faint)}
+  h1{font:600 34px/1.15 var(--ui);letter-spacing:-.025em;margin:16px 0 0}
+  .standfirst{font-size:16px;line-height:1.62;color:var(--dim);max-width:64ch;margin:16px 0 0}
+  .standfirst b{color:var(--ink);font-weight:500}
+  .meta{font:400 10px/1.6 var(--mono);letter-spacing:.06em;color:var(--faint);margin-top:22px}
+  .meta span{color:var(--dim)}
+
+  /* ---------- sections ---------- */
+  h2{
+    display:flex;align-items:baseline;gap:14px;margin:68px 0 0;padding-top:20px;
+    border-top:1px solid var(--line);font:600 14px/1.3 var(--ui);letter-spacing:.005em;
+  }
+  h2 .n{font:500 10.5px/1 var(--mono);letter-spacing:.18em;color:var(--faint)}
+  .sub{font-size:13px;line-height:1.6;color:var(--dim);margin:10px 0 0;max-width:70ch}
+
+  .legend{display:flex;flex-wrap:wrap;gap:20px;margin:18px 0 0;
+    font:400 9.5px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+  .legend span{display:flex;align-items:center;gap:7px}
+  .dot{width:6px;height:6px;display:inline-block;border-radius:1px}
+  .dot.amber{background:var(--amber)} .dot.ink{background:var(--ink)} .dot.blue{background:var(--blue)}
+
+  /* ---------- figure ---------- */
+  .fig{margin:22px 0 0;padding:20px 18px;background:var(--panel-2);
+       border:1px solid var(--line);border-radius:3px;overflow-x:auto}
+  .fig svg{display:block;width:100%;min-width:760px;height:auto}
+
+  .box{fill:var(--panel);stroke:var(--line);stroke-width:1}
+  .chip{fill:var(--panel-2);stroke:var(--line);stroke-width:1}
+  .wire{stroke:var(--wire);stroke-width:1;fill:none}
+  .dash{stroke:var(--wire);stroke-width:1;fill:none;stroke-dasharray:3 4}
+  .hairline{stroke:var(--line);stroke-width:1}
+  svg text{font-family:var(--mono)}
+  .h{font-size:9.5px;letter-spacing:.17em;fill:var(--dim);font-weight:500}
+  .m{font-size:10.6px;fill:var(--ink)}
+  .d{font-size:9.5px;fill:var(--dim)}
+  .nm{font-family:var(--ui);font-size:11px;font-weight:500;fill:var(--ink)}
+  .role{font-size:8.5px;letter-spacing:.13em;fill:var(--faint)}
+  .act{font-size:9px;fill:var(--amber)}
+  .rl{font-size:8.5px;letter-spacing:.15em;fill:var(--faint)}
+  .f{font-size:8.5px;fill:var(--faint)}
+  .wall{font-size:8.5px;fill:var(--faint)}
+
+  figcaption,.cap{margin:12px 0 0;font:400 11px/1.75 var(--mono);color:var(--dim);max-width:80ch}
+
+  /* ---------- worked example ---------- */
+  .worked{
+    display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin:18px 0 0;
+    padding:16px 18px;border:1px solid var(--line);border-radius:3px;background:var(--panel);
+  }
+  .wcell{display:flex;flex-direction:column;gap:5px;min-width:76px}
+  .wk{font:400 8.5px/1 var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--faint)}
+  .wv{font:400 13px/1 var(--mono);font-variant-numeric:tabular-nums;color:var(--ink)}
+  .wcell.p .wv{color:var(--amber)}
+  .warrow{font:400 12px/1 var(--mono);color:var(--faint);padding-bottom:1px}
+  .worked-note{margin:10px 0 0;font-size:12.5px;line-height:1.6;color:var(--dim);max-width:80ch}
+
+  /* ---------- split ---------- */
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:22px 0 0}
+  .card{border:1px solid var(--line);border-radius:3px;background:var(--panel);padding:18px 20px 20px}
+  .card h3{margin:0 0 12px;font:500 9.5px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+  .card.amber h3{color:var(--amber)} .card.blue h3{color:var(--blue)}
+  .card ul{margin:0;padding:0;list-style:none}
+  .card li{position:relative;padding:7px 0 7px 16px;font-size:13px;line-height:1.5;
+    border-top:1px solid var(--line)}
+  .card li:first-child{border-top:0}
+  .card li::before{content:"";position:absolute;left:0;top:15px;width:5px;height:1px;background:var(--faint)}
+  .card li code{font:400 11.5px var(--mono);color:var(--ink)}
+
+  /* ---------- table ---------- */
+  table{width:100%;border-collapse:collapse;margin:22px 0 0;font-size:12.5px}
+  th,td{text-align:left;padding:10px 14px 10px 0;vertical-align:top;border-top:1px solid var(--line)}
+  th{font:500 8.5px/1.4 var(--mono);letter-spacing:.15em;text-transform:uppercase;color:var(--faint);
+     padding-top:0;border-top:0}
+  td:first-child{color:var(--ink);font-weight:500;white-space:nowrap}
+  td:nth-child(2){color:var(--dim);white-space:nowrap}
+  td code{font:400 11px var(--mono);color:var(--dim)}
+  .q{font-size:12px;color:var(--dim);font-style:italic}
+
+  footer{margin:80px 0 0;padding-top:20px;border-top:1px solid var(--line);
+    font:400 10px/1.8 var(--mono);letter-spacing:.05em;color:var(--faint)}
+  footer b{color:var(--dim);font-weight:400}
+
+  @media (max-width:700px){
+    body{padding:36px 16px 90px}
+    h1{font-size:27px}
+    .split{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<main>
+
+  <div class="overline">Corporation 001 · mechanics</div>
+  <h1>How the machine decides</h1>
+  <p class="standfirst">
+    Five participants. Each one is a <b>TypeSafe System One model</b> — a Jev — that answers exactly one
+    atomic question per round and returns a distribution over three written criteria. <b>Code, never the
+    model,</b> turns that distribution into an order size, a fill price, a spread width.
+  </p>
+  <p class="meta">engine <span>market.mjs · replay.mjs</span> &nbsp;·&nbsp; roster <span>personas.mjs</span> &nbsp;·&nbsp; client <span>jev.mjs</span></p>
+
+  <!-- ============================================================ 01 -->
+  <section id="market">
+    <h2><span class="n">01</span> The live Jev market — one round</h2>
+    <p class="sub">
+      A closed loop. Aurelia quotes; the four traders take liquidity at her prices; the net flow moves
+      the mid; the new mid changes what everybody sees next round.
+    </p>
+    <div class="legend">
+      <span><i class="dot amber"></i>the model's judgement</span>
+      <span><i class="dot ink"></i>code's decision</span>
+      <span><i class="dot blue"></i>the market's response</span>
+    </div>
+
+    <div class="fig">
+      <svg viewBox="0 0 880 700" role="img" aria-label="One round of the live Jev market: state, five atomic questions, code sizing, fills, repricing and a return to state.">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--wire)"/>
+          </marker>
+        </defs>
+
+        <!-- feedback rail -->
+        <path class="wire" d="M118 628 H58 V70 H112" marker-end="url(#ar)"/>
+        <text class="rl" x="44" y="349" transform="rotate(-90 44 349)" text-anchor="middle">NEXT ROUND · FIVE CALLS IN PARALLEL · ~350 ms · $0.00014</text>
+
+        <!-- 01 state -->
+        <rect class="box" x="118" y="34" width="742" height="72" rx="2"/>
+        <rect x="118" y="34" width="2.5" height="72" fill="var(--faint)"/>
+        <text class="h" x="136" y="55">01 · THE STATE EVERY AGENT SEES</text>
+        <text class="m" x="136" y="74">mid 99.60 · bid 99.56 / ask 99.64 · spread 8 bp · round n</text>
+        <text class="d" x="136" y="92">your position · your P&amp;L · plus one fact only you are given</text>
+
+        <path class="wire" d="M489 106 V122" marker-end="url(#ar)"/>
+
+        <!-- 02 questions -->
+        <rect class="box" x="118" y="126" width="742" height="132" rx="2"/>
+        <rect x="118" y="126" width="2.5" height="132" fill="var(--amber)"/>
+        <text class="h" x="136" y="147">02 · FIVE ATOMIC QUESTIONS — ONE CALL EACH, IN PARALLEL</text>
+
+        <rect class="chip" x="136" y="160" width="133" height="64" rx="2"/>
+        <text class="nm"   x="145" y="178">Aurelia</text>
+        <text class="role" x="145" y="192">MARKET MAKER</text>
+        <text class="act"  x="145" y="209">tighten · hold · widen</text>
+
+        <rect class="chip" x="279" y="160" width="133" height="64" rx="2"/>
+        <text class="nm"   x="288" y="178">Kestrel</text>
+        <text class="role" x="288" y="192">MOMENTUM</text>
+        <text class="act"  x="288" y="209">buy · sell · hold</text>
+
+        <rect class="chip" x="422" y="160" width="133" height="64" rx="2"/>
+        <text class="nm"   x="431" y="178">Hollis</text>
+        <text class="role" x="431" y="192">VALUE</text>
+        <text class="act"  x="431" y="209">buy · sell · hold</text>
+
+        <rect class="chip" x="565" y="160" width="133" height="64" rx="2"/>
+        <text class="nm"   x="574" y="178">Vega</text>
+        <text class="role" x="574" y="192">NEWS</text>
+        <text class="act"  x="574" y="209">buy · sell · hold</text>
+
+        <rect class="chip" x="708" y="160" width="133" height="64" rx="2"/>
+        <text class="nm"   x="717" y="178">Nyx</text>
+        <text class="role" x="717" y="192">SCALPER</text>
+        <text class="act"  x="717" y="209">buy · sell · hold</text>
+
+        <text class="d" x="136" y="240">a typed choice with three written criteria — a judgement you can read, not a prompt you parse</text>
+
+        <path class="wire" d="M489 258 V274" marker-end="url(#ar)"/>
+
+        <!-- 03 code -->
+        <rect class="box" x="118" y="278" width="742" height="156" rx="2"/>
+        <rect x="118" y="278" width="2.5" height="156" fill="var(--ink)"/>
+        <text class="h" x="136" y="299">03 · CODE OWNS THE DECISION</text>
+        <text class="f" x="842" y="299" text-anchor="end">p(·) never sizes an order itself</text>
+
+        <text class="act" x="136" y="321">TRADER — KESTREL / HOLLIS / VEGA / NYX</text>
+        <text class="m" x="136" y="341">intent = p(buy) − p(sell)</text>
+        <text class="m" x="136" y="357">|intent| &lt; 0.12  →  hold</text>
+        <text class="m" x="136" y="373">size = min(1, |intent| × 1.25) × maxSize</text>
+        <text class="d" x="136" y="393">rounded to 10 shares · caps 140 / 120 / 110 / 70</text>
+        <text class="d" x="136" y="409">near-unanimity earns the full cap</text>
+
+        <line class="hairline" x1="499" y1="316" x2="499" y2="420"/>
+
+        <text class="act" x="518" y="321">MAKER — AURELIA</text>
+        <text class="m" x="518" y="341">mult = 0.68 p(tighten)</text>
+        <text class="m" x="532" y="357">+ 1.00 p(hold) + 1.75 p(widen)</text>
+        <text class="m" x="518" y="373">clamp 0.60 … 2.20</text>
+        <text class="d" x="518" y="393">skew = −(position − 4000) ÷ 4000 × 0.035</text>
+        <text class="d" x="518" y="409">long inventory quotes lower</text>
+
+        <path class="wire" d="M489 434 V450" marker-end="url(#ar)"/>
+
+        <!-- 04 execution -->
+        <rect class="box" x="118" y="454" width="742" height="104" rx="2"/>
+        <rect x="118" y="454" width="2.5" height="104" fill="var(--blue)"/>
+        <text class="h" x="136" y="475">04 · FILL, MOVE MONEY, REGISTER FLOW</text>
+        <text class="m" x="136" y="495">buy  →  px = ask × slip</text>
+        <text class="m" x="392" y="495">sell  →  px = bid ÷ slip</text>
+        <text class="m" x="136" y="511">slip = 1 + 0.0000055 × size × 0.55</text>
+        <text class="m" x="136" y="527">Aurelia is the counterparty to every fill  ·  netFlow = Σ signed shares</text>
+        <text class="d" x="136" y="545">tape · volume · fills · her inventory is the exact negative of theirs</text>
+
+        <path class="wire" d="M489 558 V574" marker-end="url(#ar)"/>
+
+        <!-- 05 reprice -->
+        <rect class="box" x="118" y="578" width="742" height="100" rx="2"/>
+        <rect x="118" y="578" width="2.5" height="100" fill="var(--blue)"/>
+        <text class="h" x="136" y="599">05 · REPRICE · REBUILD THE BOOK · MARK TO MID</text>
+        <text class="m" x="136" y="619">mid ← mid × (1 + netFlow × 0.0000055)</text>
+        <text class="m" x="136" y="635">mid ← mid + (fair − mid) × 0.07</text>
+        <text class="m" x="136" y="651">book ← 5 levels a side · half = mid × 8 bp × mult ÷ 2 · skewed</text>
+        <text class="d" x="136" y="669">pnl = cash + position × mid  →  the loop begins again</text>
+      </svg>
+    </div>
+
+    <p class="cap">
+      Fair value is exogenous: it drifts only on news — a 16% chance per round, forced after two quiet
+      rounds — so the gap Hollis trades is handed to him, never discovered.
+    </p>
+
+    <div class="worked">
+      <div class="wcell p"><span class="wk">p(buy)</span><span class="wv">0.62</span></div>
+      <span class="warrow">−</span>
+      <div class="wcell"><span class="wk">p(sell)</span><span class="wv">0.30</span></div>
+      <span class="warrow">=</span>
+      <div class="wcell"><span class="wk">intent</span><span class="wv">0.32</span></div>
+      <span class="warrow">→</span>
+      <div class="wcell"><span class="wk">size</span><span class="wv">60 sh</span></div>
+      <span class="warrow">→</span>
+      <div class="wcell"><span class="wk">Kestrel buys</span><span class="wv">60 @ 100.04</span></div>
+    </div>
+    <p class="worked-note">
+      A 0.32 intent is a 60-share order, not a 32% one. Under 0.12 the dead zone holds — without it the
+      book drowns in 10-share noise, and every round looks like a decision when it is only a shrug.
+    </p>
+  </section>
+
+  <!-- ============================================================ 02 -->
+  <section id="replay">
+    <h2><span class="n">02</span> Replay — one bar at a time</h2>
+    <p class="sub">
+      The same five Jevs over a price path you bring. No loop, no look-ahead: at step <i>i</i> an agent
+      sees <code style="font:400 12px var(--mono);color:var(--ink)">bars[0..i]</code> and nothing after.
+      Their capital path, rebased to the first close, is drawn against the actual close.
+    </p>
+
+    <div class="fig">
+      <svg viewBox="0 0 880 640" role="img" aria-label="Replay pipeline: a bar series, the causal loop, the context wall, the five judgments and measured delta.">
+        <defs>
+          <marker id="ar2" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--wire)"/>
+          </marker>
+        </defs>
+
+        <rect class="box" x="36" y="36" width="580" height="88" rx="2"/>
+        <rect x="36" y="36" width="2.5" height="88" fill="var(--faint)"/>
+        <text class="h" x="54" y="57">01 · THE PATH YOU BRING</text>
+        <text class="m" x="54" y="77">csv or a fictional series · only close is required</text>
+        <text class="m" x="54" y="94">bar interval = median gap between timestamps</text>
+        <text class="d" x="54" y="112">seed · costBps 6 · window 8 · 60 bars by default</text>
+
+        <path class="wire" d="M326 124 V140" marker-end="url(#ar2)"/>
+
+        <rect class="box" x="36" y="146" width="580" height="104" rx="2"/>
+        <rect x="36" y="146" width="2.5" height="104" fill="var(--blue)"/>
+        <text class="h" x="54" y="167">02 · STEP i — THE LAST DECISION EARNS THIS BAR</text>
+        <text class="m" x="54" y="187">ret = close[i] ÷ close[i−1] − 1</text>
+        <text class="m" x="54" y="203">nav = nav × (1 + mean(position) × ret)</text>
+        <text class="m" x="54" y="219">push { i, close, jev: nav, delta }</text>
+        <text class="d" x="54" y="237">positions set on bar i−1 pay for bar i — the cost was charged then</text>
+
+        <path class="wire" d="M326 250 V266" marker-end="url(#ar2)"/>
+
+        <rect class="box" x="36" y="272" width="580" height="112" rx="2"/>
+        <rect x="36" y="272" width="2.5" height="112" fill="var(--amber)"/>
+        <text class="h" x="54" y="293">03 · CONTEXT — bars[0..i] AND NOTHING AFTER</text>
+        <text class="m" x="54" y="313">change 1 / 5 / 10 bar · realised vol · last 8 returns</text>
+        <text class="m" x="54" y="330">trailing-mean fair value · volume z-score · own position</text>
+
+        <line class="dash" x1="452" y1="341" x2="452" y2="372"/>
+        <text class="wall" x="442" y="360" text-anchor="end">bars[0..i] — everything printed</text>
+        <text class="wall" x="462" y="360">bars[i+1 …] — never read</text>
+
+        <path class="wire" d="M326 384 V400" marker-end="url(#ar2)"/>
+
+        <rect class="box" x="36" y="406" width="580" height="104" rx="2"/>
+        <rect x="36" y="406" width="2.5" height="104" fill="var(--ink)"/>
+        <text class="h" x="54" y="427">04 · FIVE JUDGEMENTS → TARGET POSITIONS</text>
+        <text class="m" x="54" y="447">intent = p(buy) − p(sell)</text>
+        <text class="m" x="290" y="447">|intent| &lt; 0.12 → flat</text>
+        <text class="m" x="54" y="463">target = sign(intent) × min(1, |intent| × 1.25) × leverage</text>
+        <text class="m" x="54" y="479">cost = |Δpos| × 6 bp × mult ÷ 10000  — paid now</text>
+        <text class="d" x="54" y="497">leverage 0.80 / 0.70 / 0.60 / 0.40 · Aurelia quotes, never holds</text>
+
+        <path class="wire" d="M326 510 V526" marker-end="url(#ar2)"/>
+
+        <rect class="box" x="36" y="532" width="580" height="76" rx="2"/>
+        <rect x="36" y="532" width="2.5" height="76" fill="var(--blue)"/>
+        <text class="h" x="54" y="553">05 · MEASURE</text>
+        <text class="m" x="54" y="573">delta = jev − close · tracking error · corr · agreement</text>
+        <text class="d" x="54" y="591">two paths rebased to the first close — the gap is the number</text>
+
+        <!-- surrogates -->
+        <rect class="box" x="648" y="272" width="212" height="246" rx="2"/>
+        <text class="h" x="666" y="293">SURROGATES · THE NULL</text>
+        <text class="act" x="666" y="316">AAFT · IAAFT · FT · block · shuffle</text>
+        <text class="d" x="666" y="334">same volatility, autocorrelation</text>
+        <text class="d" x="666" y="348">and drift — the shape destroyed</text>
+        <line class="hairline" x1="666" y1="360" x2="842" y2="360"/>
+        <text class="m" x="666" y="378">path ρ ≈ 0</text>
+        <text class="d" x="666" y="396">one surrogate, one path — the</text>
+        <text class="d" x="666" y="410">series the agents really traded</text>
+        <line class="hairline" x1="666" y1="424" x2="842" y2="424"/>
+        <text class="d" x="666" y="442">if the delta sits inside the</text>
+        <text class="d" x="666" y="456">surrogate spread, you are</text>
+        <text class="d" x="666" y="470">watching the agents,</text>
+        <text class="d" x="666" y="484">not the data.</text>
+
+        <path class="dash" d="M754 518 V576 H622" marker-end="url(#ar2)"/>
+        <text class="f" x="688" y="558" text-anchor="middle">as a control</text>
+      </svg>
+    </div>
+
+    <p class="cap">
+      Causality is structural, not a promise: the loop earns the previous decision before it asks the
+      next question, so reordering it would break the accounting. Positions are notional fractions of
+      capital, so the same engine runs on a R5 share and a 40&nbsp;000 index.
+    </p>
+  </section>
+
+  <!-- ============================================================ 03 -->
+  <section id="split">
+    <h2><span class="n">03</span> Who decides what</h2>
+    <p class="sub">
+      The split is the whole design. The model supplies a judgement and nothing else; every number that
+      can be wrong arithmetically is computed in code.
+    </p>
+
+    <div class="split">
+      <div class="card amber">
+        <h3>The model decides</h3>
+        <ul>
+          <li>Which of three written criteria the state most resembles</li>
+          <li>The shape of the distribution across them — summing to 1</li>
+          <li>A reported <code>confidence</code> — displayed, never used as a gate</li>
+          <li>That is all. It never sees a size, a price, or a fill</li>
+        </ul>
+      </div>
+      <div class="card blue">
+        <h3>The code decides</h3>
+        <ul>
+          <li>The dead zone: <code>|intent| &lt; 0.12</code> is a hold</li>
+          <li>Order size, rounding, and the per-agent cap</li>
+          <li>Fill price, slippage, and who takes the other side</li>
+          <li>Impact, reversion, spread width, inventory skew, P&amp;L</li>
+        </ul>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>Agent</th><th>Role</th><th>The one question</th><th>What only it sees</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Aurelia</td><td>market maker</td>
+          <td class="q">how should I quote the next round?</td>
+          <td><code>inventory vs 4000 · 5-round drift · last 6 prints</code></td>
+        </tr>
+        <tr>
+          <td>Kestrel</td><td>momentum</td>
+          <td class="q">buy, sell or hold?</td>
+          <td><code>change over 1 / 3 / 5 rounds</code></td>
+        </tr>
+        <tr>
+          <td>Hollis</td><td>value</td>
+          <td class="q">buy, sell or hold?</td>
+          <td><code>fair value · price vs that estimate</code></td>
+        </tr>
+        <tr>
+          <td>Vega</td><td>news</td>
+          <td class="q">buy, sell or hold?</td>
+          <td><code>latest headline · rounds since · move since</code></td>
+        </tr>
+        <tr>
+          <td>Nyx</td><td>scalper</td>
+          <td class="q">buy, sell or hold?</td>
+          <td><code>own fills · the spread he has to pay</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="cap">
+      Consensus is a description of what five models think right now, not a forecast. They are careful
+      readers role-playing a role — not traders trained on order flow.
+    </p>
+  </section>
+
+  <footer>
+    CORPORATION 001 &nbsp;·&nbsp; five agents, one asset, one book &nbsp;·&nbsp; ~350 ms and $0.00014 a round<br>
+    <b>all constants taken from market.mjs, replay.mjs and the manual, §26</b>
+  </footer>
+
+</main>
+</body>
+</html>
