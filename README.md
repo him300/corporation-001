@@ -54,6 +54,54 @@ $env:TYPESAFE_API_KEY="sk_..."; npm start  # Windows PowerShell
 
 Press **run**. Each round: five Jev calls in parallel, then the market reprices.
 
+## Let your agent set it up
+
+You do not have to wire this up by hand. Open this repo in **Claude Code**, **Codex**, **Cursor**,
+**Windsurf**, **Copilot**, or any agent that can run commands, and hand it one sentence:
+
+> Read this repository and set it up on this machine. Install whatever is missing, create `.env`
+> with my TypeSafe API key, start the server, prove that one live Jev call works, and tell me every
+> file you touched.
+
+Pointing it at a pull request works just as well — hand it **[PR #1](https://github.com/him300/corporation-001/pull/1)**,
+the one that added this section, and say:
+
+> Read that PR, then set this project up the same way, here, on my machine.
+
+### What a good agent will do
+
+1. `node --version` — 20 or newer. There is nothing else to install.
+2. `cp .env.example .env` and put `TYPESAFE_API_KEY=...` in it, or export the variable instead.
+3. `npm start` and confirm `http://127.0.0.1:4362` answers.
+4. Prove the model is reachable, not just the server: one `choice` question through `jev.mjs` must
+   come back with probabilities — a 200 from `/` proves nothing.
+5. Step a single round (`POST /api/control {"cmd":"step"}`) and read `/api/state` back.
+6. Tell you exactly what it changed, and what it did not.
+
+### Tell it these four things explicitly
+
+- **Never commit the API key.** It lives in `.env` (already gitignored) or the environment.
+- **Do not reformat the data.** The sheets behind this project are append-only and date-ordered by
+  hand; an agent that "tidies" them can silently delete a day. Leave the data alone unless asked.
+- **The five agents are hard-coded.** There is no strategy-slot system in this tree — it is a
+  future feature. An agent that "finds" one is hallucinating.
+- **Localhost is the default on purpose.** Only if you deliberately expose the host:
+  `HOST=0.0.0.0 ACCESS_TOKEN=<secret> npm start` — without `ACCESS_TOKEN` the API is open to
+  anyone who can reach the port.
+
+### If it gets stuck
+
+It is almost always one of three things:
+
+| Symptom | Cause |
+|---|---|
+| `no API key — set TYPESAFE_API_KEY` | `.env` is missing, is in a different directory, or the key line does not start with `TYPESAFE_API_KEY=` |
+| `jev 401` / `jev 402` | key invalid, or an account without credit |
+| server starts, calls fail with `fetch is not defined` | Node older than 18/20 |
+
+Ask the agent to print three things: `node --version`, the key from `.env` with everything past the
+sixth character masked, and the exact `jev NNN:` error it received.
+
 ## The participants
 
 | Agent | Role | Answers one question |
